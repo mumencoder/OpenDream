@@ -3,7 +3,7 @@ using OpenDreamShared.Dream;
 using OpenDreamShared.Dream.Procs;
 
 namespace OpenDreamShared.Compiler.DM {
-    public interface DMASTVisitor : ASTVisitor {
+    public partial interface DMASTVisitor : ASTVisitor {
         public void VisitFile(DMASTFile file) { throw new NotImplementedException(); }
         public void VisitBlockInner(DMASTBlockInner block) { throw new NotImplementedException(); }
         public void VisitProcBlockInner(DMASTProcBlockInner procBlock) { throw new NotImplementedException(); }

@@ -104,11 +104,19 @@ namespace DMCompiler {
             return preprocessor;
         }
 
+        private static void CompareResult(DMASTNode n1, DMASTNode n2, string s) {
+            Console.WriteLine("===================================================================================    " + s);
+            Console.WriteLine( DMAST.PrintNodes(n1, max_depth: 2) );
+            Console.WriteLine("-----------------------------------------------------------------------------------");
+            Console.WriteLine( DMAST.PrintNodes(n2, max_depth: 2) );
+            Console.WriteLine("===================================================================================");
+
+        }
         private static bool Compile(List<Token> preprocessedTokens) {
             DMLexer dmLexer = new DMLexer(null, preprocessedTokens);
             DMParser dmParser = new DMParser(dmLexer);
             DMASTFile astFile = dmParser.File();
-
+            Console.WriteLine("Parse 1");
             if (dmParser.Warnings.Count > 0) {
                 foreach (CompilerWarning warning in dmParser.Warnings) {
                     Console.WriteLine(warning);
@@ -119,9 +127,23 @@ namespace DMCompiler {
                 foreach (CompilerError error in dmParser.Errors) {
                     Console.WriteLine(error);
                 }
-
-                return false;
             }
+            DMLexer dmLexer2 = new TokenWhitespaceFilter(new DMLexer(null, preprocessedTokens));
+            OpenDreamShared.Compiler.DM.Testing.DMParser dmParser2 = new OpenDreamShared.Compiler.DM.Testing.DMParser(dmLexer2);
+            Console.WriteLine("Parse 2");
+            DMASTFile astFile2 = dmParser2.File();
+            if (dmParser2.Warnings.Count > 0) {
+                foreach (CompilerWarning warning in dmParser2.Warnings) {
+                    Console.WriteLine(warning);
+                }
+            }
+            if (dmParser2.Errors.Count > 0) {
+                foreach (CompilerError error in dmParser2.Errors) {
+                    Console.WriteLine(error);
+                }
+            }
+
+            astFile.Compare(astFile2, new DMAST.CompareResult(CompareResult));
 
             DMASTSimplifier astSimplifier = new DMASTSimplifier();
             astSimplifier.SimplifyAST(astFile);

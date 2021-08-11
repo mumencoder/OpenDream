@@ -164,12 +164,14 @@
         DMF_Window
     }
 
-    public class Token {
+    public partial class Token {
         public TokenType Type;
         public string Text;
         public string SourceFile;
         public int Line, Column;
         public object Value;
+        public bool LeadingWhitespace;
+        public bool TrailingWhitespace;
 
         public Token(TokenType type, string text, string sourceFile, int line, int column, object value) {
             Type = type;

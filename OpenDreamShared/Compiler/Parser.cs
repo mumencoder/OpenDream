@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 
 namespace OpenDreamShared.Compiler {
-    public class Parser<SourceType> {
+    public partial class Parser<SourceType> {
         public List<CompilerError> Errors = new();
         public List<CompilerWarning> Warnings = new();
 

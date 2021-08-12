@@ -92,6 +92,12 @@ namespace OpenDreamShared.Compiler.DM.Testing {
 
             DMASTIdentifier id = Identifier();
             if (id != null) {
+                if (id.Identifier == "pick") {
+                    var pickFn = PickFunction();
+                    if (pickFn != null) {
+                        return pickFn;
+                    }
+                }
                 Whitespace();
                 DMASTCallParameter[] callParameters = ProcCall();
                 if (callParameters != null) {
@@ -247,7 +253,8 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                                             preprocTokens.Add(preprocToken);
                                         } while (preprocToken.Type != TokenType.EndOfFile);
 
-                                        DMLexer expressionLexer = new DMLexer(constantToken.SourceFile, preprocTokens);
+                                        // TODO this should use the factory pattern so filters can be set elsewhere
+                                        DMLexer expressionLexer = new TokenWhitespaceFilter( new DMLexer(constantToken.SourceFile, preprocTokens) );
                                         DMParser expressionParser = new DMParser(expressionLexer);
 
                                         expressionParser.Whitespace(true);

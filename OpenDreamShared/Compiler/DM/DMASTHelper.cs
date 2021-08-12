@@ -14,10 +14,15 @@ namespace OpenDreamShared.Compiler.DM {
                 return sb;
             }
             var pad = new String(' ', 2 * depth);
+            if (n == null) {
+                sb.Append("null");
+                return sb;
+            }
             sb.Append(pad + n.GetType().Name + ":");
             var new_max_depth = max_depth - 1;
             switch (n) {
                 case DMASTIdentifier nn: sb.Append(nn.Identifier); break;
+                case DMASTProcStatementLabel nn: sb.Append(nn.Name); break;
                 case DMASTCallableProcIdentifier nn: sb.Append(nn.Identifier); break;
                 case DMASTProcDefinition nn: sb.Append(nn.Name); break;
                 case DMASTObjectDefinition nn: sb.Append(nn.Path); break;
@@ -29,7 +34,7 @@ namespace OpenDreamShared.Compiler.DM {
                         }
                     }
                     new_max_depth = -1; break;
-                case Testing.DMASTDereferenceIdentifier nn: new_max_depth = -1; sb.Append(nn.Property.Identifier); break;
+                case Testing.DMASTDereferenceIdentifier nn: new_max_depth = -1; break;
                 default: break;
             }
             sb.Append('\n');
@@ -38,7 +43,7 @@ namespace OpenDreamShared.Compiler.DM {
             }
             return sb;
         }
-        public static string PrintNodes(DMASTNode n, int max_depth = -1) {
+        public static string PrintNodes(this DMASTNode n, int max_depth = -1) {
             return PrintNode(n, 0, max_depth).ToString();
         }
 

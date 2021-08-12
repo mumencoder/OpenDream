@@ -196,7 +196,7 @@ namespace OpenDreamShared.Compiler.DMPreprocessor {
                     base.Advance();
 
                     current = Advance();
-                    while (current == ' ' || current == '\t' || current == '\n')
+                    while (current == ' ' || current == '\t')
                     {
                         current = Advance();
                     }

@@ -55,7 +55,10 @@ namespace OpenDreamShared.Compiler.DM {
             { "list", TokenType.DM_List },
             { "newlist", TokenType.DM_NewList },
             { "goto", TokenType.DM_Goto },
-            { "step", TokenType.DM_Step }
+            { "step", TokenType.DM_Step },
+            { "try", TokenType.DM_Try },
+            { "catch", TokenType.DM_Catch },
+            { "throw", TokenType.DM_Throw }
         };
 
         private bool _checkingIndentation = true;
@@ -239,9 +242,12 @@ namespace OpenDreamShared.Compiler.DM {
 
                                     if (current.Type == TokenType.DM_Preproc_Punctuator && current.Text == "=") {
                                         Advance();
-
                                         token = CreateToken(TokenType.DM_TildeEquals, "~=");
-                                    } else {
+                                    } else if (current.Type == TokenType.DM_Preproc_Punctuator && current.Text == "!") {
+                                        Advance();
+                                        token = CreateToken(TokenType.DM_TildeNot, "~!");
+                                    }
+                                    else {
                                         token = CreateToken(TokenType.DM_Tilde, c);
                                     }
 

@@ -8,7 +8,7 @@ using System.Text;
 
 namespace OpenDreamShared.Compiler.DM {
     public static partial class DMAST {
-        internal static StringBuilder PrintNode(DMASTNode n, int depth, int max_depth=-1) {
+        internal static StringBuilder PrintNode(DMASTNode n, int depth, int max_depth = -1) {
             StringBuilder sb = new();
             if (max_depth == 0) {
                 return sb;
@@ -18,25 +18,15 @@ namespace OpenDreamShared.Compiler.DM {
                 sb.Append("null");
                 return sb;
             }
-            sb.Append(pad + n.GetType().Name + ":");
+            sb.Append(pad + n.GetType().Name + ": ");
             var new_max_depth = max_depth - 1;
-            switch (n) {
-                case DMASTIdentifier nn: sb.Append(nn.Identifier); break;
-                case DMASTProcStatementLabel nn: sb.Append(nn.Name); break;
-                case DMASTCallableProcIdentifier nn: sb.Append(nn.Identifier); break;
-                case DMASTProcDefinition nn: sb.Append(nn.Name); break;
-                case DMASTObjectDefinition nn: sb.Append(nn.Path); break;
-                case DMASTProcCall nn: new_max_depth = -1; break;
-                case Testing.DMASTConstPath nn: sb.Append(nn.Path.PathString); break;
-                case DMASTDereferenceProc nn: {
-                        new_max_depth = -1;
-                        foreach (var def in nn.Dereferences) {
-                            sb.Append(def.Property + ",");
-                        }
-                    }
-                    new_max_depth = -1; break;
-                case Testing.DMASTDereferenceIdentifier nn: new_max_depth = -1; break;
-                default: break;
+            foreach (var field in n.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+                if (field.FieldType == typeof(string)) {
+                    sb.Append(field.Name + "=" + field.GetValue(n) + " ");
+                }
+                if (field.FieldType == typeof(Dream.DreamPath)) {
+                    sb.Append(field.Name + "=" + field.GetValue(n) + " ");
+                }
             }
             sb.Append('\n');
             foreach (var leaf in n.LeafNodes()) {
@@ -44,13 +34,13 @@ namespace OpenDreamShared.Compiler.DM {
             }
             return sb;
         }
-        public static string PrintNodes(this DMASTNode n, int max_depth = -1) {
-            return PrintNode(n, 0, max_depth).ToString();
+        public static string PrintNodes(this DMASTNode n, int depth = 0, int max_depth = -1) {
+            return PrintNode(n, depth, max_depth).ToString();
         }
 
         public delegate void CompareResult(DMASTNode n_l, DMASTNode n_r, string s);
 
-        public static bool Compare(this DMASTNode node_l, DMASTNode node_r, CompareResult cr) {
+        public static bool Compare(DMASTNode node_l, DMASTNode node_r, CompareResult cr) {
             if (node_l == null || node_r == null) {
                 if (node_r == node_l) { return true; }
                 cr(node_l, node_r, "null mismatch");
@@ -70,11 +60,12 @@ namespace OpenDreamShared.Compiler.DM {
                 compared.Add(subnodes_l);
             }
 
-            //foreach (var field in node_l.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance)) {
-            //    if (compared.Contains(field.GetValue(node_l))) {
-            //        continue;
-            //    }
-            //}
+            foreach (var field in node_l.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+                if (compared.Contains(field.GetValue(node_l))) {
+                    continue;
+                }
+                //TODO non-node type field checking goes here
+            }
 
             return true;
         }

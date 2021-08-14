@@ -143,7 +143,7 @@ namespace DMCompiler {
                 }
             }
 
-            astFile.Compare(astFile2, new DMAST.CompareResult(CompareResult));
+            DMAST.Compare(astFile, astFile2, new DMAST.CompareResult(CompareResult));
 
             DMASTSimplifier astSimplifier = new DMASTSimplifier();
             astSimplifier.SimplifyAST(astFile);

@@ -685,16 +685,12 @@ namespace OpenDreamShared.Compiler.DM.Testing {
         }
 
         public DMASTProcStatement ForStandardTest(DMASTProcStatement init) {
-            Console.WriteLine("b4 compa" + PrintDebugTokens());
             var comparator = Expression();
             if (!Check(TokenType.DM_Semicolon) && !Check(TokenType.DM_Comma)) {
                 return new DMASTProcStatementForStandard(init, comparator, null, ForBody());
             }
-            Console.WriteLine("b4 incr" + PrintDebugTokens());
             var incrementor = Expression();
             if (incrementor != null) {
-                Console.WriteLine(incrementor.PrintNodes());
-                Console.WriteLine("aftar incr" + PrintDebugTokens());
                 return new DMASTProcStatementForStandard(init, comparator, incrementor, ForBody());
             }
             return null;

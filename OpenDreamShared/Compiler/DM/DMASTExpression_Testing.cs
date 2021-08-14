@@ -59,7 +59,12 @@ namespace OpenDreamShared.Compiler.DM.Testing {
         public DMASTExpression ExpressionTernary() {
             DMASTExpression a = ExpressionIn();
 
+            Token t = Current();
             if (a != null && Check(TokenType.DM_Question)) {
+                if (Current().Type == TokenType.DM_LeftBracket) {
+                    ReuseToken(t);
+                    return a;
+                }
                 DMASTExpression b = ExpressionTernary();
                 if (b == null) Error("Expected an expression");
                 Consume(TokenType.DM_Colon, "Expected ':'");
@@ -460,6 +465,7 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             DMASTExpression a = ExpressionExplicitParenthesis();
             Whitespace();
             TokenType[] types = new TokenType[] {
+                TokenType.DM_Question,
                 TokenType.DM_QuestionPeriod,
                 TokenType.DM_QuestionColon,
                 TokenType.DM_Period,
@@ -526,13 +532,27 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                     AcceptPosition();
                 }
                 else if (op.Type == TokenType.DM_LeftBracket) {
-                    Whitespace();
                     var inner = Expression();
-                    Whitespace();
                     Consume(TokenType.DM_RightBracket, "Expected ']' got " + Current().Type);
                     previous_expr = new DMASTListIndex(previous_expr, inner);
                 }
+                else if (op.Type == TokenType.DM_Question) {
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
+                    Token op2 = Current();
+                    if (Current().Type == TokenType.DM_LeftBracket) {
+                        Advance();
+                        if (op2.LeadingWhitespace || op2.TrailingWhitespace) { ReuseToken(op2); ReuseToken(op); return previous_expr; }
+                        var inner = Expression();
+                        Consume(TokenType.DM_RightBracket, "Expected ']' got " + Current().Type);
+                        //TODO this needs to inform that its a conditional index
+                        previous_expr = new DMASTListIndex(previous_expr, inner);
+                    }
+                    else {
+                        ReuseToken(op); return previous_expr;
+                    }
+                }
                 else {
+                    // why is this working without reusetoken here
                     return previous_expr;
                 }
                 op = Current();

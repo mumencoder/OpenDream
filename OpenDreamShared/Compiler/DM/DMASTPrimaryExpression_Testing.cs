@@ -307,7 +307,8 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                 TokenType.DM_Proc,
                 TokenType.DM_List,
                 TokenType.DM_NewList,
-                TokenType.DM_Step
+                TokenType.DM_Step,
+                TokenType.DM_Null
             };
 
             Token elementToken = Current();

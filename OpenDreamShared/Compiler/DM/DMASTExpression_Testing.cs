@@ -60,9 +60,7 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             DMASTExpression a = ExpressionIn();
 
             if (a != null && Check(TokenType.DM_Question)) {
-                ternary_count += 1;
                 DMASTExpression b = ExpressionTernary();
-                ternary_count -= 1;
                 if (b == null) Error("Expected an expression");
                 Consume(TokenType.DM_Colon, "Expected ':'");
                 DMASTExpression c = ExpressionTernary();
@@ -457,11 +455,9 @@ namespace OpenDreamShared.Compiler.DM.Testing {
         }
         */
 
-        int ternary_count = 0;
-
         public DMASTExpression ExpressionDereference() {
             Whitespace();
-            DMASTExpression a = ExpressionExplicitBinding();
+            DMASTExpression a = ExpressionExplicitParenthesis();
             Whitespace();
             TokenType[] types = new TokenType[] {
                 TokenType.DM_QuestionPeriod,
@@ -472,15 +468,15 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             };
             var previous_expr = a;
             Token op = Current();
-            while (Check(types)) {
-                if (previous_expr is DMASTExpressionConstant) {
+            while (previous_expr != null && Check(types)) {
+                if (previous_expr is DMASTExpressionConstant || previous_expr is DMASTStringFormat) {
                     ReuseToken(op); return previous_expr;
                 }
 
                 if (op.Type == TokenType.DM_QuestionPeriod) {
-                    if (op.LeadingWhitespace) { ReuseToken(op); return previous_expr; }
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
                     SavePosition();
-                    var b = ExpressionExplicitBinding();
+                    var b = ExpressionExplicitParenthesis();
                     switch (b) {
                         case DMASTIdentifier id: previous_expr = new DMASTDereferenceIdentifier(previous_expr, DMASTDereference.Type.Direct, true, id); break;
                         case DMASTProcCall call: {
@@ -491,9 +487,9 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                     AcceptPosition();
                 }
                 else if (op.Type == TokenType.DM_QuestionColon) {
-                    if (op.LeadingWhitespace) { ReuseToken(op); return previous_expr; }
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
                     SavePosition();
-                    var b = ExpressionExplicitBinding();
+                    var b = ExpressionExplicitParenthesis();
                     switch (b) {
                         case DMASTIdentifier id: previous_expr = new DMASTDereferenceIdentifier(previous_expr, DMASTDereference.Type.Search, true, id); break;
                         case DMASTProcCall call: {
@@ -504,9 +500,9 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                     AcceptPosition();
                 }
                 else if (op.Type == TokenType.DM_Period) {
-                    if (op.LeadingWhitespace) { ReuseToken(op); return previous_expr; }
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
                     SavePosition();
-                    var b = ExpressionExplicitBinding();
+                    var b = ExpressionExplicitParenthesis();
                     switch (b) {
                         case DMASTIdentifier id: previous_expr = new DMASTDereferenceIdentifier(previous_expr, DMASTDereference.Type.Direct, false, id); break;
                         case DMASTProcCall call: {
@@ -517,9 +513,9 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                     AcceptPosition();
                 }
                 else if (op.Type == TokenType.DM_Colon) {
-                    if (op.LeadingWhitespace) { ReuseToken(op); return previous_expr; }
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
                     SavePosition();
-                    var b = ExpressionExplicitBinding();
+                    var b = ExpressionExplicitParenthesis();
                     switch (b) {
                         case DMASTIdentifier id: previous_expr = new DMASTDereferenceIdentifier(previous_expr, DMASTDereference.Type.Search, false, id); break;
                         case DMASTProcCall call: {
@@ -544,34 +540,63 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             return previous_expr;
         }
 
-        /*
-        public DMASTExpression ExpressionPath() {
-            Whitespace();
-            var expr = ExpressionPrimary();
-            if (expr != null) {
-                return expr;
-            }
-            var path = Path();
-            if (path != null) {
-                return path;
-            }
-            return ExpressionExplicitBinding();
-
-        }
-        */
-
-        public DMASTExpression ExpressionExplicitBinding() {
-            Whitespace();
+        public DMASTExpression ExpressionExplicitParenthesis() {
             if (Check(TokenType.DM_LeftParenthesis)) {
-                Whitespace();
                 var expr = Expression();
-                Whitespace();
                 Consume(TokenType.DM_RightParenthesis, "Expected ')'");
                 return expr;
             }
             else {
                 return ExpressionPrimary();
             }
+        }
+
+        public DMASTPathExpression ExpressionPath(int explicitStatus) {
+            TokenType[] types = new TokenType[] {
+                    TokenType.DM_Colon,
+                    TokenType.DM_Slash,
+                    TokenType.DM_Period
+                };
+
+            var previous_expr = ConstPath(explicitStatus);
+            Token op = Current();
+            SavePosition();
+            while (previous_expr != null && Check(types)) {
+                if (previous_expr is not Testing.DMASTPathExpression) { ReuseToken(op); return previous_expr; }
+                if (op.Type == TokenType.DM_Slash) {
+                    if (op.LeadingWhitespace) { ReuseToken(op); return previous_expr; }
+                    //Console.WriteLine("hmm1!" + PrintDebugTokens());
+                    var b = ConstPath(0);
+                    //if (b != null) { Console.WriteLine(b.PrintNodes()); }
+                    //else { Console.WriteLine("null"); }
+                    //Console.WriteLine("hmm2!" + PrintDebugTokens());
+                    if (b is not Testing.DMASTPathExpression) {
+                        AcceptPosition();
+                    //    Console.WriteLine("hmm3!" + PrintDebugTokens());
+                    //    Console.WriteLine("ast is" + previous_expr.PrintNodes());
+                        return previous_expr; }
+                    previous_expr = new Testing.DMASTDirectPath(previous_expr as DMASTPathExpression, b as DMASTPathExpression);
+                }
+                else if (op.Type == TokenType.DM_Colon) {
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
+                    var b = ConstPath(0);
+                    if (b is not Testing.DMASTPathExpression) { RestorePosition(); ReuseToken(op); return previous_expr; }
+                    previous_expr = new Testing.DMASTDownwardPath(previous_expr as DMASTPathExpression, b as DMASTPathExpression);
+                }
+                else if (op.Type == TokenType.DM_Period) {
+                    if (op.LeadingWhitespace || op.TrailingWhitespace) { ReuseToken(op); return previous_expr; }
+                    var b = ConstPath(0);
+                    if (b is not Testing.DMASTPathExpression) { RestorePosition(); ReuseToken(op); return previous_expr; }
+                    previous_expr = new Testing.DMASTUpwardPath(previous_expr as DMASTPathExpression, b as DMASTPathExpression);
+                }
+                else {
+                    return previous_expr;
+                }
+                AcceptPosition();
+                SavePosition();
+                op = Current();
+            }
+            return previous_expr;
         }
     }
 }

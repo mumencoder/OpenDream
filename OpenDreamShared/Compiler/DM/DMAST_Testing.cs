@@ -1,9 +1,17 @@
 ﻿
 using System;
+using OpenDreamShared.Dream;
 using OpenDreamShared.Compiler.DM;
 
 namespace OpenDreamShared.Compiler.DM {
     public partial interface DMASTVisitor : ASTVisitor {
+        public void Visit(Testing.DMASTNewTyped node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTConstPath node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTDirectPath node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTUpwardPath node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTDownwardPath node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTProcStatementThrow node) { throw new NotImplementedException(); }
+        public void Visit(Testing.DMASTModifiedType node) { throw new NotImplementedException(); }
         public void Visit(Testing.DMASTProcStatementTryCatch node) { throw new NotImplementedException(); }
         public void Visit(Testing.DMASTProcStatementEmpty node) { throw new NotImplementedException(); }
         public void Visit(Testing.DMASTExpressionTo node) { throw new NotImplementedException(); }
@@ -19,6 +27,103 @@ namespace OpenDreamShared.Compiler.DM {
 
 namespace OpenDreamShared.Compiler.DM.Testing {
 
+    public interface DMASTPathExpression : DMASTExpression { }
+
+
+    public class DMASTNewTyped : DMASTExpression {
+        public DMASTPathExpression Path;
+        public DMASTCallParameter[] Arguments;
+        public DMASTNewTyped(DMASTPathExpression path, DMASTCallParameter[] args) {
+            Path = path;
+            Arguments = args;
+        }
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+    public class DMASTConstPath : DMASTPathExpression {
+        public DreamPath Path;
+        public DMASTConstPath(DreamPath path) {
+            Path = path;
+        }
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+
+    public class DMASTUpwardPath : DMASTPathExpression {
+        public DMASTPathExpression Path;
+        public DMASTPathExpression Search;
+
+        public DMASTUpwardPath(DMASTPathExpression path, DMASTPathExpression search) {
+            Path = path;
+            Search = search;
+        }
+
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+
+    public class DMASTDownwardPath : DMASTPathExpression {
+        public DMASTPathExpression Path;
+        public DMASTPathExpression Search;
+
+        public DMASTDownwardPath(DMASTPathExpression path, DMASTPathExpression search) {
+            Path = path;
+            Search = search;
+        }
+
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+
+    public class DMASTDirectPath : DMASTPathExpression {
+        public DMASTPathExpression Path;
+        public DMASTPathExpression Search;
+
+        public DMASTDirectPath(DMASTPathExpression path, DMASTPathExpression search) {
+            Path = path;
+            Search = search;
+        }
+
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+
+    public class DMASTProcStatementThrow : DMASTProcStatement {
+        public DMASTExpression Expression;
+        public DMASTProcStatementThrow(DMASTExpression expr) {
+            Expression = expr;
+        }
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
+
+    public class DMASTModifiedType : DMASTPathExpression {
+        public class ModifiedProperty {
+            public DMASTIdentifier Identifier;
+            public DMASTExpression Value;
+            public ModifiedProperty(DMASTIdentifier ident, DMASTExpression value) {
+                Identifier = ident;
+                Value = value;
+            }
+        }
+
+        public DreamPath Path;
+        public ModifiedProperty[] ModifiedProperties;
+        public DMASTModifiedType(DreamPath path, ModifiedProperty[] props) {
+            Path = path;
+            ModifiedProperties = props;
+        }
+
+        public void Visit(DMASTVisitor visitor) {
+            visitor.Visit(this);
+        }
+    }
     public class DMASTProcStatementTryCatch : DMASTProcStatement {
         public DMASTProcBlockInner TryBlock;
         public DMASTProcBlockInner CatchBlock;

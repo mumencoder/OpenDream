@@ -27,6 +27,7 @@ namespace OpenDreamShared.Compiler.DM {
                 case DMASTProcDefinition nn: sb.Append(nn.Name); break;
                 case DMASTObjectDefinition nn: sb.Append(nn.Path); break;
                 case DMASTProcCall nn: new_max_depth = -1; break;
+                case Testing.DMASTConstPath nn: sb.Append(nn.Path.PathString); break;
                 case DMASTDereferenceProc nn: {
                         new_max_depth = -1;
                         foreach (var def in nn.Dereferences) {

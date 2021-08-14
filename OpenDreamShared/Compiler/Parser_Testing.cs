@@ -30,12 +30,14 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                 _currentToken = _lexer.GetNextToken();
 
                 _previousDebugTokens.Enqueue(_currentToken);
-                if (_previousDebugTokens.Count > 6) {
+                if (_previousDebugTokens.Count > 50) {
                     _previousDebugTokens.Dequeue();
                 }
 
                 if (_currentToken.Type == TokenType.Error) {
-                    Error(_currentToken.ShortString() + " " + _currentToken.SourceFile + " " + _currentToken.Line);
+                    string msg = _currentToken.Value + " " + _currentToken.SourceFile + " " + _currentToken.Line + " " + _currentToken.Column;
+                    System.Console.WriteLine(msg);
+                    Error(msg);
                     Advance();
                 }
                 else if (_currentToken.Type == TokenType.Warning) {
@@ -142,7 +144,7 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             return "(" + typetext + tokentext + ") ";
         }
 
-        protected string PrintDebugTokens() {
+        protected string PrintDebugTokens(int num = 6) {
             string msg = "";
             msg += "Current token: " + PrintToken(_currentToken);
             msg += "\ntoken stack: ";
@@ -150,8 +152,10 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                 msg += PrintToken(token);
             }
             msg += "\nDebug tokens: ";
+            var i = 0;
             foreach (var token in _previousDebugTokens) {
                 msg += PrintToken(token);
+                if (i == num) { break; }
             }
             return msg + '\n';
 

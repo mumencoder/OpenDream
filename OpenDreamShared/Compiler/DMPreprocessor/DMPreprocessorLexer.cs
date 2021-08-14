@@ -83,11 +83,18 @@ namespace OpenDreamShared.Compiler.DMPreprocessor {
 
                         textBuilder.Append('@');
                         textBuilder.Append(delimiter);
+
+                        var everybody_gets_a_free_one = false;
                         do {
                             c = Advance();
 
-                            textBuilder.Append(c);
-                        } while (c != delimiter && c != '\n');
+                            if (c == '\n' && !everybody_gets_a_free_one) {
+                                everybody_gets_a_free_one = true;
+                                c = '\0';
+                                continue;
+                            }
+                                textBuilder.Append(c);
+                        } while (c != delimiter && !AtEndOfSource);
                         Advance();
 
                         string text = textBuilder.ToString();
@@ -196,10 +203,10 @@ namespace OpenDreamShared.Compiler.DMPreprocessor {
                     base.Advance();
 
                     current = Advance();
-                    while (current == ' ' || current == '\t')
-                    {
-                        current = Advance();
-                    }
+//                    while (current == ' ' || current == '\t')
+//                    {
+//                        current = Advance();
+//                    }
                 }
             }
 
@@ -217,7 +224,7 @@ namespace OpenDreamShared.Compiler.DMPreprocessor {
             Queue<Token> stringTokens = new();
 
             Advance();
-            while (!(!isLong && GetCurrent() == '\n') && !AtEndOfSource) {
+            while (!AtEndOfSource) {
                 char stringC = GetCurrent();
 
                 textBuilder.Append(stringC);

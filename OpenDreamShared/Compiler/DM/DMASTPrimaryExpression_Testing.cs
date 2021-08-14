@@ -4,66 +4,45 @@ using System.Collections.Generic;
 using OpenDreamShared.Dream.Procs;
 using System.Text;
 using OpenDreamShared.Compiler.DMPreprocessor;
+using OpenDreamShared.Dream;
+using DereferenceType = OpenDreamShared.Compiler.DM.DMASTDereference.DereferenceType;
+using Dereference = OpenDreamShared.Compiler.DM.DMASTDereference.Dereference;
+using OpenDreamShared.Compiler;
 
 namespace OpenDreamShared.Compiler.DM.Testing {
     public partial class DMParser : Parser<Token> {
         public DMASTExpression ExpressionPrimary() {
             Whitespace();
-            DMASTExpression primary = Constant();
+            DMASTExpression primary = null;
+            primary = Constant();
             if (primary != null) {
                 return primary;
             }
-            DMASTPath const_path = Path(true);
-            if (const_path != null) {
-                primary = new DMASTConstantPath(const_path);
-
-                while (Check(TokenType.DM_Period)) {
-                    DMASTPath search = Path();
-                    if (search == null) Error("Expected a path for an upward search");
-
-                    primary = new DMASTUpwardPathSearch((DMASTExpressionConstant)primary, search);
-                }
-                return primary;
-            }
-
             if (Check(TokenType.DM_List)) {
-                DMASTCallParameter[] values = ProcCall(false);
+                DMASTCallParameter[] values = ProcCall();
                 return new DMASTList(values);
+            }
+            if (Check(TokenType.DM_NewList)) {
+                Whitespace();
+                DMASTCallParameter[] values = ProcCall(false);
+
+                return new DMASTNewList(values);
             }
             if (Check(TokenType.DM_New)) {
                 Whitespace();
                 DMASTCallParameter[] parameters = null;
                 if (Check(TokenType.DM_LeftParenthesis)) {
-                    Whitespace();
                     parameters = CallParameters(true);
                     Consume(TokenType.DM_RightParenthesis, "Expected ')'");
-                    Whitespace();
                     return new DMASTNewInferred(parameters);
                 }
                 else {
-                    // NOTE: I dont know how this syntax works, maybe the deref cannot be a full expression
-                    DM.DMASTDereference dereference = Dereference();
-                    DMASTIdentifier identifier = (dereference == null) ? Identifier() : null;
-                    DMASTPath path = (dereference == null && identifier == null) ? Path(true) : null;
-                    Whitespace();
+                    Testing.DMASTPathExpression path_expr = ExpressionPath(0) as Testing.DMASTPathExpression;
                     if (Check(TokenType.DM_LeftParenthesis)) {
-                        Whitespace();
                         parameters = CallParameters(true);
                         Consume(TokenType.DM_RightParenthesis, "Expected ')'");
-                        Whitespace();
                     }
-                    if (dereference != null) {
-                        return new DMASTNewDereference(dereference, parameters);
-                    }
-                    else if (identifier != null) {
-                        return new DMASTNewIdentifier(identifier, parameters);
-                    }
-                    else if (path != null) {
-                        return new DMASTNewPath(path, parameters);
-                    }
-                    else {
-                        return new DMASTNewInferred(parameters);
-                    }
+                    return new Testing.DMASTNewTyped(path_expr, parameters);
                 }
             }
             if (Check(TokenType.DM_Call)) {
@@ -76,6 +55,12 @@ namespace OpenDreamShared.Compiler.DM.Testing {
 
                 return new DMASTCall(callParameters, procParameters);
             }
+
+            primary = ExpressionExplicitPath();
+            if (primary != null) {
+                return primary;
+            }
+
             DMASTCallable callable = null;
             if (Check(TokenType.DM_SuperProc)) { callable = new DMASTCallableSuper(); }
             else if (Check(TokenType.DM_Period)) { callable = new DMASTCallableSelf(); }
@@ -205,6 +190,315 @@ namespace OpenDreamShared.Compiler.DM.Testing {
             return null;
         }
 
+
+        public Testing.DMASTPathExpression ExpressionExplicitPath() {
+            return ExpressionPath(1);
+        }
+
+        public Testing.DMASTPathExpression ConstPath(int explicitStatus) {
+            SavePosition();
+            DreamPath.PathType pathType = DreamPath.PathType.Relative;
+//            Console.WriteLine("check1 " + Current().ShortString() + " " + explicitStatus);
+            Token op = Current();
+            if (Check(TokenType.DM_Slash)) {
+                if (op.TrailingWhitespace || explicitStatus == -1) { RestorePosition(); return null; }
+                pathType = DreamPath.PathType.Absolute;
+            }
+            else if (Check(TokenType.DM_Colon)) {
+                if (op.TrailingWhitespace || explicitStatus == -1) { RestorePosition(); return null; }
+                pathType = DreamPath.PathType.DownwardSearch;
+            }
+            else if (Check(TokenType.DM_Period)) {
+                if (op.TrailingWhitespace || explicitStatus == -1) { RestorePosition(); return null; }
+                // .proc is just a thing.
+                if (Current().Type == TokenType.DM_Proc) {
+                    explicitStatus = 0;
+                }
+                pathType = DreamPath.PathType.UpwardSearch;
+            }
+            else if (explicitStatus == 1) { RestorePosition(); return null; }
+
+  //          Console.WriteLine("check2 " + Current().ShortString() + " " + explicitStatus);
+            var ident = PathElement();
+  //          Console.WriteLine("check3 " + Current().ShortString() + " " + explicitStatus);
+            if (ident == null && pathType == DreamPath.PathType.Absolute) {
+                AcceptPosition();
+                return new Testing.DMASTConstPath(new DreamPath("/"));
+            }
+            else if (ident == null) {
+                RestorePosition(); return null;
+            }
+            else {
+                DreamPath path = new DreamPath(pathType, new string[] { ident });
+                if (Check(TokenType.DM_LeftCurlyBracket)) {
+                    List<DMASTModifiedType.ModifiedProperty> modtypes = new();
+                    while (!Check(TokenType.DM_RightCurlyBracket)) {
+                        var modident = Identifier();
+                        if (modident == null) {
+                            Error("expected identifier in modified type");
+                        }
+                        if (!Check(TokenType.DM_Equals)) {
+                            Error("expected = after modified type identifier");
+                        }
+                        var expr = Expression();
+                        if (Current().Type != TokenType.DM_Semicolon && Current().Type != TokenType.DM_RightCurlyBracket) {
+                            Error("expected } or ; after modified type property");
+                        }
+                        if (Current().Type == TokenType.DM_Semicolon) { Advance(); }
+                        modtypes.Add(new DMASTModifiedType.ModifiedProperty(modident, expr));
+                    }
+                    Check(TokenType.Newline);
+                    AcceptPosition();
+                    return new DMASTModifiedType(path, modtypes.ToArray());
+                }
+                AcceptPosition();
+                return new Testing.DMASTConstPath(path);
+            }
+        }
+
+        public DMASTPath Path(bool expression = false) {
+            Token firstToken = Current();
+            DreamPath.PathType pathType = DreamPath.PathType.Relative;
+            bool hasPathTypeToken = true;
+
+            if (Check(TokenType.DM_Slash)) {
+                pathType = DreamPath.PathType.Absolute;
+            }
+            else if (Check(TokenType.DM_Colon)) {
+                pathType = DreamPath.PathType.DownwardSearch;
+            }
+            else if (Check(TokenType.DM_Period)) {
+                pathType = DreamPath.PathType.UpwardSearch;
+            }
+            else {
+                hasPathTypeToken = false;
+
+                if (expression) return null;
+            }
+
+            string pathElement = PathElement();
+            if (pathElement != null) {
+                List<string> pathElements = new() { pathElement };
+
+                while (pathElement != null && Check(TokenType.DM_Slash)) {
+                    pathElement = PathElement();
+
+                    if (pathElement != null) {
+                        pathElements.Add(pathElement);
+                    }
+                }
+
+                var path = new DreamPath(pathType, pathElements.ToArray());
+                return new DMASTPath(path);
+            }
+            else if (hasPathTypeToken) {
+                if (expression) ReuseToken(firstToken);
+
+                return null;
+            }
+
+            return null;
+        }
+
+        public string PathElement() {
+            TokenType[] validPathElementTokens = {
+                TokenType.DM_Identifier,
+                TokenType.DM_Var,
+                TokenType.DM_Proc,
+                TokenType.DM_List,
+                TokenType.DM_NewList,
+                TokenType.DM_Step
+            };
+
+            Token elementToken = Current();
+            if (Check(validPathElementTokens)) {
+                return elementToken.Text;
+            }
+            else {
+                return null;
+            }
+        }
+
+        public DMASTCallable Callable() {
+            if (Check(TokenType.DM_SuperProc)) return new DMASTCallableSuper();
+            if (Check(TokenType.DM_Period)) return new DMASTCallableSelf();
+
+            return null;
+        }
+
+        public DMASTIdentifier Identifier() {
+            Token token = Current();
+
+            if (Check(new TokenType[] { TokenType.DM_Identifier, TokenType.DM_Step })) {
+                return new DMASTIdentifier(token.Text);
+            }
+
+            return null;
+        }
+
+        public DM.DMASTDereference Dereference() {
+            Token leftToken = Current();
+
+            if (Check(TokenType.DM_Identifier)) {
+                Token dereferenceToken = Current();
+                TokenType[] dereferenceTokenTypes = {
+                    TokenType.DM_Period,
+                    TokenType.DM_QuestionPeriod,
+                    TokenType.DM_Colon,
+                    TokenType.DM_QuestionColon,
+                };
+
+                if (Check(dereferenceTokenTypes)) {
+                    List<Dereference> dereferences = new();
+                    DMASTIdentifier identifier = Identifier();
+
+                    if (identifier != null) {
+                        do {
+                            DereferenceType type;
+                            bool conditional;
+                            switch (dereferenceToken.Type) {
+                                case TokenType.DM_Period:
+                                type = DereferenceType.Direct;
+                                conditional = false;
+                                break;
+                                case TokenType.DM_QuestionPeriod:
+                                type = DereferenceType.Direct;
+                                conditional = true;
+                                break;
+                                case TokenType.DM_Colon:
+                                type = DereferenceType.Search;
+                                conditional = false;
+                                break;
+                                case TokenType.DM_QuestionColon:
+                                type = DereferenceType.Search;
+                                conditional = true;
+                                break;
+                                default:
+                                throw new InvalidOperationException();
+                            }
+
+                            dereferences.Add(new Dereference(type, conditional, identifier.Identifier));
+
+                            dereferenceToken = Current();
+                            if (Check(dereferenceTokenTypes)) {
+                                identifier = Identifier();
+                                if (identifier == null) Error("Expected an identifier");
+                            }
+                            else {
+                                identifier = null;
+                            }
+                        } while (identifier != null);
+
+                        return new DM.DMASTDereference(new DMASTIdentifier(leftToken.Text), dereferences.ToArray());
+                    }
+                    else {
+                        ReuseToken(dereferenceToken);
+                        ReuseToken(leftToken);
+                    }
+                }
+                else {
+                    ReuseToken(leftToken);
+                }
+            }
+
+            return null;
+        }
+
+        public DMASTCallParameter[] ProcCall(bool includeEmptyParameters = true) {
+            if (Check(TokenType.DM_LeftParenthesis)) {
+                DMASTCallParameter[] callParameters = CallParameters(includeEmptyParameters);
+                if (callParameters == null) callParameters = new DMASTCallParameter[0];
+                Consume(TokenType.DM_RightParenthesis, "Expected ')'");
+
+                return callParameters;
+            }
+
+            return null;
+        }
+
+        public DMASTCallParameter[] CallParameters(bool includeEmpty) {
+            List<DMASTCallParameter> parameters = new List<DMASTCallParameter>();
+            do {
+                if (Current().Type == TokenType.DM_RightParenthesis) { break; }
+                if (Current().Type == TokenType.DM_Comma) {
+                    Advance();
+                    parameters.Add(new DMASTCallParameter(new DMASTConstantNull()));
+                    continue;
+                }
+                DMASTCallParameter parameter = CallParameter();
+                if (parameter != null) {
+                    parameters.Add(parameter);
+                }
+                else if (Check(TokenType.DM_IndeterminateArgs)) {
+                    ;
+                }
+                else {
+                    Error("Parameter expected");
+                }
+                if (Current().Type == TokenType.DM_Comma) { Advance(); continue; }
+                else if (Current().Type == TokenType.DM_RightParenthesis) { break; }
+                else { Error("invalid arg separator"); }
+
+
+            } while (true);
+            if (parameters.Count > 0) {
+                return parameters.ToArray();
+            }
+            else {
+                return null;
+            }
+        }
+
+        public DMASTCallParameter[] CallParametersOld(bool includeEmpty) {
+            List<DMASTCallParameter> parameters = new List<DMASTCallParameter>();
+            DMASTCallParameter parameter = CallParameter();
+
+            while (parameter != null) {
+                parameters.Add(parameter);
+
+                if (Check(TokenType.DM_Comma)) {
+                    Whitespace();
+                    parameter = CallParameter();
+
+                    if (parameter == null) {
+                        if (includeEmpty) parameter = new DMASTCallParameter(new DMASTConstantNull());
+                        else while (Check(TokenType.DM_Comma)) Whitespace();
+                    }
+                }
+                else {
+                    parameter = null;
+                }
+            }
+
+            if (parameters.Count > 0) {
+                return parameters.ToArray();
+            }
+            else {
+                return null;
+            }
+        }
+
+        public DMASTCallParameter CallParameter() {
+            DMASTExpression expression = Expression();
+
+            if (expression != null) {
+                DMASTAssign assign = expression as DMASTAssign;
+
+                if (assign != null) {
+                    if (assign.Expression is DMASTConstantString) {
+                        return new DMASTCallParameter(assign.Value, ((DMASTConstantString)assign.Expression).Value);
+                    }
+                    else if (assign.Expression is DMASTIdentifier) {
+                        return new DMASTCallParameter(assign.Value, ((DMASTIdentifier)assign.Expression).Identifier);
+                    }
+                }
+
+                return new DMASTCallParameter(expression);
+            }
+
+            return null;
+        }
+
         public DMASTExpression Constant() {
             Whitespace();
             Token constantToken = Current();
@@ -250,10 +544,13 @@ namespace OpenDreamShared.Compiler.DM.Testing {
                                             preprocToken.SourceFile = constantToken.SourceFile;
                                             preprocToken.Line = constantToken.Line;
                                             preprocToken.Column = constantToken.Column;
-                                            preprocTokens.Add(preprocToken);
+                                            if (preprocToken.Type != TokenType.EndOfFile) {
+                                                preprocTokens.Add(preprocToken);
+                                            }
                                         } while (preprocToken.Type != TokenType.EndOfFile);
 
                                         // TODO this should use the factory pattern so filters can be set elsewhere
+                                        preprocTokens.Add(new Token(TokenType.EndOfFile, "\0", "", 0, 0, '\0'));
                                         DMLexer expressionLexer = new TokenWhitespaceFilter( new DMLexer(constantToken.SourceFile, preprocTokens) );
                                         DMParser expressionParser = new DMParser(expressionLexer);
 

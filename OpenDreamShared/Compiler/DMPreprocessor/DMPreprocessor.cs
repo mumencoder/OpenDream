@@ -252,6 +252,7 @@ namespace OpenDreamShared.Compiler.DMPreprocessor {
         }
 
         private bool VerifyDirectiveUsage(Token token) {
+            return true;
             if (!_enableDirectives) {
                 _result.Add(new Token(TokenType.Error, token.Text, token.SourceFile, token.Line, token.Column, "Cannot use a preprocessor directive here"));
                 return false;

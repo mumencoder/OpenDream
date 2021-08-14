@@ -27,7 +27,9 @@ namespace OpenDreamShared.Compiler.DM {
             "ref",
             "improper", "proper",
             "red", "blue", "green", "black",
-            "..."
+            "...",
+            " ",
+            "u"
             //TODO: ASCII/Unicode values
         };
 
@@ -167,9 +169,11 @@ namespace OpenDreamShared.Compiler.DM {
                                 case ";": token = CreateToken(TokenType.DM_Semicolon, c); break;
                                 case "{": token = CreateToken(TokenType.DM_LeftCurlyBracket, c); break;
                                 case "}": {
-                                    _pendingTokenQueue.Enqueue(CreateToken(TokenType.DM_RightCurlyBracket, c));
-                                    token = CreateToken(TokenType.Newline, '\n');
+                                            // TODO this adds a special check to modified types, might be harmless, might not be
+                                             _pendingTokenQueue.Enqueue(CreateToken(TokenType.DM_RightCurlyBracket, c));
+                                            token = CreateToken(TokenType.Newline, '\n');
 
+                                            //token = CreateToken(TokenType.DM_RightCurlyBracket, c);
                                     break;
                                 }
                                 case "/": {

@@ -15,59 +15,27 @@ using OpenDreamShared.Compiler.DMPreprocessor;
 using OpenDreamShared.Json;
 
 namespace DMCompiler {
-    class Program {
+    public class Program {
         public static int _errorCount = 0;
+
+        static CommandLineArgs parsedArgs;
+        static string file;
+        static string interfaceFile;
+        static List<string> mapFiles;
 
         static int Main(string[] args)
         {
-            if (ParseCommandLineArgs(args, out var parsedArgs) is { } exitCode)
+            if (ParseCommandLineArgs(args, out parsedArgs) is { } exitCode)
                 return exitCode;
 
-            var file = parsedArgs.CompileFile;
+            file = parsedArgs.CompileFile;
             var sw = Stopwatch.StartNew();
-            string interfaceFile;
             List<string> mapFiles = new();
-            if (parsedArgs.OldParser)
-            {
-                DMPreprocessor preprocessor = Preprocess(file);
-                if (parsedArgs.DumpPreprocesor)
-                {
-                    StringBuilder result = new();
-                    foreach (Token t in preprocessor.GetResult()) {
-                        result.Append(t.Text);
-                    }
-
-                    string output = Path.Join(
-                        Path.GetDirectoryName(file) ?? AppDomain.CurrentDomain.BaseDirectory,
-                        "preprocessor_dump.dm");
-
-                    File.WriteAllText(output, result.ToString());
-                    Console.WriteLine($"Preprocessor output dumped to {output}");
-                }
-
-                Compile(preprocessor.GetResult());
-
-                interfaceFile = preprocessor.IncludedInterface;
-                mapFiles.AddRange(preprocessor.IncludedMaps);
+            if (parsedArgs.OldParser) {
+                CompileUsingOldParser();
             }
-            else
-            {
-                var result = ParseResult.Parse(GetFileList(file));
-
-                var files = result.GetFileList();
-                var diagnostics = result.GetDiagnostics();
-                foreach (var diag in diagnostics)
-                {
-                    var loc = $"{files[diag.Location.File-1]}:{diag.Location.Line}:{diag.Location.Column}";
-                    Console.WriteLine($"{diag.Severity}: {diag.Description}");
-                    Console.WriteLine($"   @ {loc}");
-                }
-
-                AstConverter.ConvertTypesToObjectTree(result);
-
-                var specialFiles = result.GetSpecialFiles();
-                interfaceFile = specialFiles.Skins[0];
-                mapFiles.AddRange(specialFiles.Maps);
+            else {
+                CompileUsingSpacemanParser();
             }
 
             // Parser-independent compile tasks.
@@ -97,6 +65,45 @@ namespace DMCompiler {
             }
 
             return 0;
+        }
+
+        public static void CompileUsingOldParser() {
+            DMPreprocessor preprocessor = Preprocess(file);
+            if (parsedArgs.DumpPreprocesor) {
+                StringBuilder result = new();
+                foreach (Token t in preprocessor.GetResult()) {
+                    result.Append(t.Text);
+                }
+
+                string output = Path.Join(
+                    Path.GetDirectoryName(file) ?? AppDomain.CurrentDomain.BaseDirectory,
+                    "preprocessor_dump.dm");
+
+                File.WriteAllText(output, result.ToString());
+                Console.WriteLine($"Preprocessor output dumped to {output}");
+            }
+
+            Compile(preprocessor.GetResult());
+
+            interfaceFile = preprocessor.IncludedInterface;
+            mapFiles.AddRange(preprocessor.IncludedMaps);
+        }
+        public static void CompileUsingSpacemanParser() {
+            var result = ParseResult.Parse(GetFileList(file));
+
+            var files = result.GetFileList();
+            var diagnostics = result.GetDiagnostics();
+            foreach (var diag in diagnostics) {
+                var loc = $"{files[diag.Location.File - 1]}:{diag.Location.Line}:{diag.Location.Column}";
+                Console.WriteLine($"{diag.Severity}: {diag.Description}");
+                Console.WriteLine($"   @ {loc}");
+            }
+
+            AstConverter.ConvertTypesToObjectTree(result);
+
+            var specialFiles = result.GetSpecialFiles();
+            interfaceFile = specialFiles.Skins[0];
+            mapFiles.AddRange(specialFiles.Maps);
         }
 
         /// <returns>Null -> success, value -> return code to exit with</returns>
@@ -166,7 +173,7 @@ Options:
             return new[] { Path.Combine(dmStandardDirectory, "_Standard.dm"), environmentFile };
         }
 
-        private static DMPreprocessor Preprocess(string file) {
+        public static DMPreprocessor Preprocess(string file) {
             DMPreprocessor preprocessor = new DMPreprocessor(true);
 
             string compilerDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

@@ -2,7 +2,7 @@
 using OpenDreamShared.Dream;
 
 namespace DMCompiler.DM {
-    class DMVariable {
+    public class DMVariable {
         public DreamPath? Type;
         public string Name;
         public bool IsGlobal;

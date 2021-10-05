@@ -9,7 +9,7 @@ using System.IO;
 using OpenDreamShared.Compiler;
 
 namespace DMCompiler.DM {
-    class DMProc {
+    public class DMProc {
         public class DMLocalVariable {
             public int Id;
             public DreamPath? Type;

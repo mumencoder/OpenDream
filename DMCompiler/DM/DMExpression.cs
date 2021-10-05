@@ -6,7 +6,7 @@ using OpenDreamShared.Dream.Procs;
 using System.Collections.Generic;
 
 namespace DMCompiler.DM {
-    abstract class DMExpression {
+    public abstract class DMExpression {
         public enum ProcPushResult {
             // The emitted code has pushed the proc onto the stack
             Unconditional,

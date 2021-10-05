@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using OpenDreamShared.Compiler;
 
 namespace DMCompiler.DM {
-    class DMObject {
+    public class DMObject {
         public UInt32 Id;
         public DreamPath Path;
         public DMObject Parent;

@@ -1,5 +1,5 @@
 namespace DMCompiler.DM.Expressions {
-    abstract class BinaryOp : DMExpression {
+    public abstract class BinaryOp : DMExpression {
         protected DMExpression LHS { get; }
         protected DMExpression RHS { get; }
 
@@ -396,7 +396,7 @@ namespace DMCompiler.DM.Expressions {
 #endregion
 
 #region Compound Assignment
-        abstract class AssignmentBinaryOp : BinaryOp {
+        public abstract class AssignmentBinaryOp : BinaryOp {
             public AssignmentBinaryOp(DMExpression lhs, DMExpression rhs)
                 : base(lhs, rhs)
             {}
@@ -464,7 +464,7 @@ namespace DMCompiler.DM.Expressions {
         }
 
         // x = y
-        class Assignment : AssignmentBinaryOp {
+        public class Assignment : AssignmentBinaryOp {
             public Assignment(DMExpression lhs, DMExpression rhs)
                 : base(lhs, rhs)
             {}

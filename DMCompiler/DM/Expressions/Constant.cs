@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 
 namespace DMCompiler.DM.Expressions {
-    abstract class Constant : DMExpression {
+    public abstract class Constant : DMExpression {
         public sealed override Constant ToConstant() {
             return this;
         }

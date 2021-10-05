@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using OpenDreamShared.Compiler;
 
 namespace DMCompiler.DM {
-    static class DMObjectTree {
+    public static class DMObjectTree {
         public static Dictionary<DreamPath, DMObject> AllObjects = new();
         public static List<string> StringTable = new();
         public static Dictionary<string, int> StringToStringID = new();

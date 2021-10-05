@@ -19,7 +19,6 @@ namespace DMCompiler {
         public static int _errorCount = 0;
 
         static CommandLineArgs parsedArgs;
-        static string file;
         static string interfaceFile;
         static List<string> mapFiles;
 
@@ -28,14 +27,14 @@ namespace DMCompiler {
             if (ParseCommandLineArgs(args, out parsedArgs) is { } exitCode)
                 return exitCode;
 
-            file = parsedArgs.CompileFile;
+            string file = parsedArgs.CompileFile;
             var sw = Stopwatch.StartNew();
             List<string> mapFiles = new();
             if (parsedArgs.OldParser) {
-                CompileUsingOldParser();
+                CompileUsingOldParser(file);
             }
             else {
-                CompileUsingSpacemanParser();
+                CompileUsingSpacemanParser(file);
             }
 
             // Parser-independent compile tasks.
@@ -67,7 +66,7 @@ namespace DMCompiler {
             return 0;
         }
 
-        public static void CompileUsingOldParser() {
+        public static void CompileUsingOldParser(string file) {
             DMPreprocessor preprocessor = Preprocess(file);
             if (parsedArgs.DumpPreprocesor) {
                 StringBuilder result = new();
@@ -88,7 +87,7 @@ namespace DMCompiler {
             interfaceFile = preprocessor.IncludedInterface;
             mapFiles.AddRange(preprocessor.IncludedMaps);
         }
-        public static void CompileUsingSpacemanParser() {
+        public static void CompileUsingSpacemanParser(string file) {
             var result = ParseResult.Parse(GetFileList(file));
 
             var files = result.GetFileList();

@@ -68,24 +68,9 @@ namespace DMCompiler {
 
         public static void CompileUsingOldParser(string file) {
             DMPreprocessor preprocessor = Preprocess(file);
-            if (parsedArgs.DumpPreprocesor) {
-                StringBuilder result = new();
-                foreach (Token t in preprocessor.GetResult()) {
-                    result.Append(t.Text);
-                }
-
-                string output = Path.Join(
-                    Path.GetDirectoryName(file) ?? AppDomain.CurrentDomain.BaseDirectory,
-                    "preprocessor_dump.dm");
-
-                File.WriteAllText(output, result.ToString());
-                Console.WriteLine($"Preprocessor output dumped to {output}");
-            }
-
             Compile(preprocessor.GetResult());
-
             interfaceFile = preprocessor.IncludedInterface;
-            mapFiles.AddRange(preprocessor.IncludedMaps);
+            //mapFiles.AddRange(preprocessor.IncludedMaps);
         }
         public static void CompileUsingSpacemanParser(string file) {
             var result = ParseResult.Parse(GetFileList(file));
@@ -94,15 +79,15 @@ namespace DMCompiler {
             var diagnostics = result.GetDiagnostics();
             foreach (var diag in diagnostics) {
                 var loc = $"{files[diag.Location.File - 1]}:{diag.Location.Line}:{diag.Location.Column}";
-                Console.WriteLine($"{diag.Severity}: {diag.Description}");
-                Console.WriteLine($"   @ {loc}");
+                //Console.WriteLine($"{diag.Severity}: {diag.Description}");
+                //Console.WriteLine($"   @ {loc}");
             }
 
             AstConverter.ConvertTypesToObjectTree(result);
 
             var specialFiles = result.GetSpecialFiles();
             interfaceFile = specialFiles.Skins[0];
-            mapFiles.AddRange(specialFiles.Maps);
+            //mapFiles.AddRange(specialFiles.Maps);
         }
 
         /// <returns>Null -> success, value -> return code to exit with</returns>

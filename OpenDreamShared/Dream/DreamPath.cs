@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
+using Newton = Newtonsoft.Json;
 
 namespace OpenDreamShared.Dream {
     public struct DreamPath {
@@ -36,11 +37,13 @@ namespace OpenDreamShared.Dream {
         }
 
         [JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public string LastElement {
             get => Elements.Last();
         }
 
         [JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public string[] Elements {
             get => _elements;
             set {

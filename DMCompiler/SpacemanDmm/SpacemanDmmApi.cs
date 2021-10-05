@@ -26,7 +26,7 @@ namespace DMCompiler.SpacemanDmm
             MaxDepth = 256
         };
 
-        private const string LibName = "sdmm_opendream.dll";
+        private const string LibName = "sdmm_opendream.so";
 
         [DllImport(LibName)]
         public static extern ParseResultRaw* sdmm_parse(int filesCount, byte** files);

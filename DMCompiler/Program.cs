@@ -14,7 +14,7 @@ using OpenDreamShared.Compiler.DMPreprocessor;
 using OpenDreamShared.Json;
 
 namespace DMCompiler {
-    class Program {
+    public class Program {
         public static int _errorCount = 0;
         public static string[] CompilerArgs;
         public static List<string> CompiledFiles = new List<string>(1);
@@ -92,7 +92,7 @@ namespace DMCompiler {
             return CompilerArgs.Contains(arg);
         }
 
-        private static DMPreprocessor Preprocess(List<string> files) {
+        public static DMPreprocessor Preprocess(List<string> files) {
             DMPreprocessor preprocessor = new DMPreprocessor(true);
 
             string compilerDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -113,7 +113,6 @@ namespace DMCompiler {
             DMLexer dmLexer = new DMLexer(null, preprocessedTokens);
             DMParser dmParser = new DMParser(dmLexer);
             DMASTFile astFile = dmParser.File();
-
             if (dmParser.Warnings.Count > 0) {
                 foreach (CompilerWarning warning in dmParser.Warnings) {
                     Warning(warning);
@@ -127,9 +126,11 @@ namespace DMCompiler {
 
                 return false;
             }
-
             if (astFile == null) return false;
+            return CompileAST(astFile);
+        }
 
+        public static bool CompileAST(DMASTFile astFile) {
             DMASTSimplifier astSimplifier = new DMASTSimplifier();
             astSimplifier.SimplifyAST(astFile);
 

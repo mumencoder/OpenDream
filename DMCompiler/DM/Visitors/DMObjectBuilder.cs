@@ -61,10 +61,9 @@ namespace DMCompiler.DM.Visitors {
 
         public void ProcessVarDefinition(DMASTObjectVarDefinition varDefinition) {
             DMObject oldObject = _currentObject;
-            DMVariable variable = new DMVariable(varDefinition.Type, varDefinition.Name, varDefinition.IsGlobal);
+            DMVariable variable = new DMVariable(varDefinition);
 
             _currentObject = DMObjectTree.GetDMObject(varDefinition.ObjectPath);
-
             if (variable.IsGlobal) {
                 _currentObject.GlobalVariables[variable.Name] = variable;
             } else {
@@ -117,7 +116,7 @@ namespace DMCompiler.DM.Visitors {
                     throw new CompileErrorException("Type " + dmObject.Path + " already has a proc named \"" + procName + "\"");
                 }
 
-                DMProc proc = new DMProc(procDefinition);
+                DMProc proc = new DMProc(procDefinition, dmObject.RootScope);
 
                 dmObject.AddProc(procName, proc);
                 if (procDefinition.IsVerb) {

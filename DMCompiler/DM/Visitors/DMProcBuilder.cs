@@ -20,7 +20,8 @@ namespace DMCompiler.DM.Visitors {
             foreach (DMASTDefinitionParameter parameter in procDefinition.Parameters) {
                 string parameterName = parameter.Name;
 
-                _proc.AddLocalVariable(parameterName, parameter.ObjectType);
+                var argvar = new DMVariable(parameter.ObjectType, parameterName); 
+                _proc.AddLocalVariable(parameterName, argvar);
                 if (parameter.Value != null) { //Parameter has a default value
                     string afterDefaultValueCheck = _proc.NewLabelName();
 
@@ -155,7 +156,11 @@ namespace DMCompiler.DM.Visitors {
         }
 
         public void ProcessStatementVarDeclaration(DMASTProcStatementVarDeclaration varDeclaration) {
-            _proc.AddLocalVariable(varDeclaration.Name, varDeclaration.Type);
+            var v = new DMVariable(varDeclaration);
+            if (varDeclaration.IsConst && varDeclaration.Value != null) {
+                v.InitialValue = DMExpression.Create(_dmObject, _proc, varDeclaration.Value, varDeclaration.Type);
+            }
+            _proc.AddLocalVariable(varDeclaration.Name, v);
 
             if (varDeclaration.Value != null) {
                 DMExpression.Emit(_dmObject, _proc, varDeclaration.Value, varDeclaration.Type);
@@ -425,16 +430,16 @@ namespace DMCompiler.DM.Visitors {
             _proc.EndScope();
             _proc.Jump(endLabel);
 
-            if (tryCatch.CatchParameter != null)
-            {
-                //TODO set the value to what is thrown in try
-                var param = tryCatch.CatchParameter as DMASTProcStatementVarDeclaration;
-                _proc.AddLocalVariable(param.Name, param.Type);
-            }
-
             //TODO make catching actually work
             _proc.AddLabel(catchLabel);
             _proc.StartScope();
+            if (tryCatch.CatchParameter != null) {
+                //TODO set the value to what is thrown in try
+                var param = tryCatch.CatchParameter as DMASTProcStatementVarDeclaration;
+                if (param != null) {
+                    _proc.AddLocalVariable(param.Name, new DMVariable(param));
+                }
+            }
             ProcessBlockInner(tryCatch.CatchBody);
             _proc.EndScope();
             _proc.AddLabel(endLabel);

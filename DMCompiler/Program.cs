@@ -153,7 +153,7 @@ namespace DMCompiler {
             Console.WriteLine(warning);
         }
 
-        private static List<DreamMapJson> ConvertMaps(List<string> mapPaths) {
+        public static List<DreamMapJson> ConvertMaps(List<string> mapPaths) {
             List<DreamMapJson> maps = new();
 
             foreach (string mapPath in mapPaths) {
@@ -178,7 +178,7 @@ namespace DMCompiler {
             return maps;
         }
 
-        private static void SaveJson(List<DreamMapJson> maps, string interfaceFile, string outputFile) {
+        public static void SaveJson(List<DreamMapJson> maps, string interfaceFile, string outputFile) {
             DreamCompiledJson compiledDream = new DreamCompiledJson();
             compiledDream.Strings = DMObjectTree.StringTable;
             compiledDream.Maps = maps;

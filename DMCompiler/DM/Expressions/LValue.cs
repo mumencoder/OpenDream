@@ -52,10 +52,23 @@ namespace DMCompiler.DM.Expressions {
     // Identifier of local variable
     class Local : LValue {
         string Name { get; }
+        DMScope Scope;
 
-        public Local(DreamPath? path, string name)
+        public Local(DMScope scope, DreamPath? path, string name)
             : base(path) {
             Name = name;
+            Scope = scope;
+        }
+
+        public override Constant ToConstant() {
+            DMVariable v = Scope;
+            if (v.IsConst) {
+                if (v.InitialValue == null) {
+                    return new Null();
+                }
+                return v.InitialValue.ToConstant();
+            }
+            return base.ToConstant();
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {

@@ -236,10 +236,15 @@ namespace OpenDreamShared.Compiler.DM {
         public string Name;
         public DMASTExpression Value;
         public bool IsGlobal = false;
+        public bool IsConst = false;
 
         public DMASTObjectVarDefinition(DreamPath path, DMASTExpression value) {
             int globalElementIndex = path.FindElement("global");
             if (globalElementIndex != -1) path = path.RemoveElement(globalElementIndex);
+            int staticElementIndex = path.FindElement("static");
+            if (staticElementIndex != -1) path = path.RemoveElement(staticElementIndex);
+            int constElementIndex = path.FindElement("const");
+            if (constElementIndex != -1) path = path.RemoveElement(constElementIndex);
 
             int varElementIndex = path.FindElement("var");
             if (varElementIndex == -1) throw new Exception($"Var definition's path ({path}) did not contain a var element");
@@ -248,9 +253,12 @@ namespace OpenDreamShared.Compiler.DM {
 
             ObjectPath = path.FromElements(0, varElementIndex);
             Type = (varPath.Elements.Length > 1) ? varPath.FromElements(0, -2) : null;
-            IsGlobal = globalElementIndex != -1 || ObjectPath.Equals(DreamPath.Root);
             Name = varPath.LastElement;
             Value = value;
+            IsGlobal = globalElementIndex != -1 || staticElementIndex != 1 || ObjectPath.Equals(DreamPath.Root);
+            IsConst = constElementIndex != -1;
+
+            Type?.NormalizeModifiers();
         }
 
         public void Visit(DMASTVisitor visitor) {
@@ -303,13 +311,27 @@ namespace OpenDreamShared.Compiler.DM {
         public string Name;
         public DMASTExpression Value;
 
+        public bool IsGlobal = false;
+        public bool IsConst = false;
+
         public DMASTProcStatementVarDeclaration(DMASTPath path, DMASTExpression value) {
+            int globalElementIndex = path.Path.FindElement("global");
+            if (globalElementIndex != -1) path.Path = path.Path.RemoveElement(globalElementIndex);
+            int staticElementIndex = path.Path.FindElement("static");
+            if (staticElementIndex != -1) path.Path = path.Path.RemoveElement(staticElementIndex);
+            int constElementIndex = path.Path.FindElement("const");
+            if (constElementIndex != -1) path.Path = path.Path.RemoveElement(constElementIndex);
+
             int varElementIndex = path.Path.FindElement("var");
             DreamPath typePath = path.Path.FromElements(varElementIndex + 1, -2);
 
             Type = (typePath.Elements.Length > 0) ? typePath : null;
             Name = path.Path.LastElement;
             Value = value;
+            IsGlobal = globalElementIndex != -1 || staticElementIndex != 1;
+            IsConst = constElementIndex != -1;
+
+            Type = Type?.NormalizeModifiers();
         }
 
         public void Visit(DMASTVisitor visitor) {

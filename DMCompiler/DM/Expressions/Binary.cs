@@ -344,6 +344,9 @@ namespace DMCompiler.DM.Expressions {
         public override Constant ToConstant()
         {
             var lhs = LHS.ToConstant();
+            if (lhs.IsTruthy()) {
+                return lhs;
+            }
             var rhs = RHS.ToConstant();
             return lhs.Or(rhs);
         }
@@ -367,6 +370,9 @@ namespace DMCompiler.DM.Expressions {
         public override Constant ToConstant()
         {
             var lhs = LHS.ToConstant();
+            if (!lhs.IsTruthy()) {
+                return lhs;
+            }
             var rhs = RHS.ToConstant();
             return lhs.And(rhs);
         }

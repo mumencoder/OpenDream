@@ -83,10 +83,10 @@ namespace DMCompiler.DM.Visitors {
             } else if (name == "args") {
                 Result = new Expressions.Args();
             } else {
-                DMProc.DMLocalVariable localVar = _proc.GetLocalVariable(name);
+                DMVariable localVar = _proc.GetLocalVariable(name);
 
                 if (localVar != null) {
-                    Result = new Expressions.Local(localVar.Type, name);
+                    Result = new Expressions.Local(_proc, localVar.Type, name);
                     return;
                 }
 

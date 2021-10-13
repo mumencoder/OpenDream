@@ -15,10 +15,13 @@ namespace DMCompiler.DM {
         public List<DMExpression> InitializationProcExpressions = new();
         public DMProc InitializationProc = null;
 
-        public DMObject(UInt32 id, DreamPath path, DMObject parent) {
+        public DMScope RootScope;
+
+        public DMObject(UInt32 id, DreamPath path, DMObject parent, DMScope scope) {
             Id = id;
             Path = path;
             Parent = parent;
+            RootScope = scope;
         }
 
         public void CompileProcs() {
@@ -81,7 +84,7 @@ namespace DMCompiler.DM {
 
         public void CreateInitializationProc() {
             if (InitializationProc == null) {
-                InitializationProc = new DMProc(null);
+                InitializationProc = new DMProc(null, RootScope);
 
                 InitializationProc.PushSuperProc();
                 InitializationProc.JumpIfFalse("no_super");

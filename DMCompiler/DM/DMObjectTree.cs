@@ -8,7 +8,12 @@ namespace DMCompiler.DM {
         public static Dictionary<DreamPath, DMObject> AllObjects = new();
         public static List<string> StringTable = new();
         public static Dictionary<string, int> StringToStringID = new();
-        public static DMProc GlobalInitProc = new DMProc(null);
+        public static DMProc GlobalInitProc = new DMProc(null, GlobalScope);
+        public static bool ThrowOnError = true;
+        public static bool PrintOnError = true;
+        public static bool PrintUnimplementedWarnings = false;
+
+        public static DMScope GlobalScope = new();
 
         private static List<Expressions.Assignment> _globalInitProcAssigns = new();
 
@@ -36,7 +41,11 @@ namespace DMCompiler.DM {
                     parent = GetDMObject(path.FromElements(0, -2), createIfNonexistent);
                 }
 
-                dmObject = new DMObject(_dmObjectIdCounter++, path, parent);
+                var scope = GlobalScope;
+                if (parent != null) {
+                    scope = parent.RootScope;
+                }
+                dmObject = new DMObject(_dmObjectIdCounter++, path, parent, scope);
                 AllObjects.Add(path, dmObject);
             }
 

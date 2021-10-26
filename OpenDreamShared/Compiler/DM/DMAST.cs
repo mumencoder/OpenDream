@@ -193,6 +193,7 @@ namespace OpenDreamShared.Compiler.DM {
         public string Name;
         public bool IsOverride = false;
         public bool IsVerb = false;
+        public bool IsToplevel = false;
         public DMASTDefinitionParameter[] Parameters;
         public DMASTProcBlockInner Body;
 
@@ -209,6 +210,9 @@ namespace OpenDreamShared.Compiler.DM {
             if (procElementIndex != -1) path = path.RemoveElement(procElementIndex);
 
             ObjectPath = (path.Elements.Length > 1) ? path.FromElements(0, -2) : null;
+            if (ObjectPath == null || ObjectPath?.Elements.Length == 0) {
+                IsToplevel = true;
+            }
             Name = path.LastElement;
             Parameters = parameters;
             Body = body;
@@ -231,8 +235,59 @@ namespace OpenDreamShared.Compiler.DM {
         }
     }
 
+    public class VarDeclInfo {
+        public DreamPath? ObjectPath;
+        public DreamPath? TypePath;
+        public string VarName;
+        public bool IsGlobal;
+        public bool IsConst;
+        public bool IsTmp;
+        public bool IsToplevel;
+
+        // NOTE: This modifies the original DreamPath and it will be in an unusable state afterwards
+        public VarDeclInfo(DreamPath path) {
+            string[] elements = path.Elements;
+            var writeIdx = 0;
+            var readIdx = 0;
+            while (readIdx < elements.Length && elements[readIdx] != "var") {
+                elements[writeIdx] = elements[readIdx];
+                readIdx += 1; writeIdx += 1;
+            }
+            ObjectPath = new DreamPath( path.Type, elements[..writeIdx]);
+            if (ObjectPath?.Elements.Length == 0) {
+                IsToplevel = true;
+            }
+            readIdx += 1;
+            writeIdx = 0;
+            while (readIdx < elements.Length-1) {
+                var elem = elements[readIdx];
+                if (elem == "static" || elem == "global") {
+                    IsGlobal = true;
+                }
+                else if (elem == "const") {
+                    IsConst = true;
+                }
+                else if (elem == "tmp") {
+                    IsTmp = true;
+                }
+                else {
+                    elements[writeIdx] = elem;
+                    writeIdx += 1;
+                }
+                readIdx += 1;
+            }
+            if (writeIdx > 0) {
+                TypePath = new DreamPath( DreamPath.PathType.Absolute, elements[..(writeIdx)] );
+            }
+            else {
+                TypePath = null;
+            }
+            VarName = elements[elements.Length-1];
+        }
+    }
+
     public class DMASTObjectVarDefinition : DMASTStatement {
-        public DreamPath ObjectPath;
+        public DreamPath? ObjectPath;
         public DreamPath? Type;
         public string Name;
         public DMASTExpression Value;
@@ -305,8 +360,17 @@ namespace OpenDreamShared.Compiler.DM {
         public DMASTExpression Value;
 
         public DMASTProcStatementVarDeclaration(DMASTPath path, DMASTExpression value) {
-            int varElementIndex = path.Path.FindElement("var");
-            DreamPath typePath = path.Path.FromElements(varElementIndex + 1, -2);
+            VarDecl = new VarDeclInfo(path.Path);
+            if (VarDecl.ObjectPath?.Elements.Length != 0) {
+                throw new CompileErrorException("Expected var at beginning of proc declaration");
+            }
+            if (VarDecl.IsTmp) {
+                throw new CompileErrorException("Tmp path modifier not allowed in local var definitions");
+            }
+            Type = VarDecl.TypePath;
+            Name = VarDecl.VarName;
+            IsGlobal = VarDecl.IsGlobal;
+            IsConst = VarDecl.IsConst;
 
             Type = (typePath.Elements.Length > 0) ? typePath : null;
             Name = path.Path.LastElement;

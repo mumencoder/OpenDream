@@ -240,22 +240,22 @@ namespace OpenDreamShared.Compiler.DM {
         public DreamPath? Type;
         public string Name;
         public DMASTExpression Value;
+        ObjVarDeclInfo VarDecl;
         public bool IsGlobal = false;
+        public bool IsToplevel = false;
+        public bool IsConst = false;
+        public bool IsTmp = false;
         public DMValueType ValType;
 
         public DMASTObjectVarDefinition(DreamPath path, DMASTExpression value, DMValueType valType = DMValueType.Anything) {
-            int globalElementIndex = path.FindElement("global");
-            if (globalElementIndex != -1) path = path.RemoveElement(globalElementIndex);
-
-            int varElementIndex = path.FindElement("var");
-            if (varElementIndex == -1) throw new Exception($"Var definition's path ({path}) did not contain a var element");
-
-            DreamPath varPath = path.FromElements(varElementIndex + 1, -1);
-
-            ObjectPath = path.FromElements(0, varElementIndex);
-            Type = (varPath.Elements.Length > 1) ? varPath.FromElements(0, -2) : null;
-            IsGlobal = globalElementIndex != -1 || ObjectPath.Equals(DreamPath.Root);
-            Name = varPath.LastElement;
+            VarDecl = new ObjVarDeclInfo(path);
+            ObjectPath = VarDecl.ObjectPath;
+            Type = VarDecl.TypePath;
+            Name = VarDecl.VarName;
+            IsGlobal = VarDecl.IsGlobal;
+            IsConst = VarDecl.IsConst;
+            IsTmp = VarDecl.IsTmp;
+            IsToplevel = VarDecl.IsToplevel;
             Value = value;
             ValType = valType;
         }
@@ -310,12 +310,16 @@ namespace OpenDreamShared.Compiler.DM {
         public string Name;
         public DMASTExpression Value;
 
-        public DMASTProcStatementVarDeclaration(DMASTPath path, DMASTExpression value) {
-            int varElementIndex = path.Path.FindElement("var");
-            DreamPath typePath = path.Path.FromElements(varElementIndex + 1, -2);
+        public ProcVarDeclInfo VarDecl;
+        public bool IsGlobal;
+        public bool IsConst;
 
-            Type = (typePath.Elements.Length > 0) ? typePath : null;
-            Name = path.Path.LastElement;
+        public DMASTProcStatementVarDeclaration(DMASTPath path, DMASTExpression value) {
+            VarDecl = new ProcVarDeclInfo(path.Path);
+            Type = VarDecl.TypePath;
+            Name = VarDecl.VarName;
+            IsGlobal = VarDecl.IsGlobal;
+            IsConst = VarDecl.IsConst;
             Value = value;
         }
 

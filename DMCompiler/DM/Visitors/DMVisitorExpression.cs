@@ -95,6 +95,11 @@ namespace DMCompiler.DM.Visitors {
                     Result = new Expressions.Local(localVar.Type, name);
                     return;
                 }
+                int? procGlobalId = _proc.GetGlobalVariableId(name);
+                if (procGlobalId != null) {
+                    Result = new Expressions.GlobalField(DMObjectTree.Globals[procGlobalId.Value].Type, procGlobalId.Value);
+                    return;
+                }
 
                 var field = _dmObject.GetVariable(name);
                 if (field != null) {

@@ -45,6 +45,7 @@ namespace DMCompiler.DM {
         private int _localVariableIdCounter = 0;
         private bool _waitFor = true;
         private int _labelIdCounter = 0;
+        private Dictionary<string, int> GlobalVariables = new();
 
         public DMProc(DMASTProcDefinition astDefinition) {
             _astDefinition = astDefinition;
@@ -84,6 +85,25 @@ namespace DMCompiler.DM {
 
         public void WaitFor(bool waitFor) {
             _waitFor = waitFor;
+        }
+
+        public DMVariable CreateGlobalVariable(DreamPath? type, string name) {
+            int id = DMObjectTree.CreateGlobal(out DMVariable global, type, name);
+
+            GlobalVariables[name] = id;
+            return global;
+        }
+        public int? GetGlobalVariableId(string name) {
+            if (GlobalVariables.TryGetValue(name, out int id)) {
+                return id;
+            }
+            return null;
+        }
+
+        public DMVariable GetGlobalVariable(string name) {
+            int? id = GetGlobalVariableId(name);
+
+            return (id == null) ? null : DMObjectTree.Globals[id.Value];
         }
 
         public void AddParameter(string name, DMValueType type) {

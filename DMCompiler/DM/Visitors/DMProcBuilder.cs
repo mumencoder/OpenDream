@@ -161,7 +161,21 @@ namespace DMCompiler.DM.Visitors {
         }
 
         public void ProcessStatementVarDeclaration(DMASTProcStatementVarDeclaration varDeclaration) {
-            if (varDeclaration.IsGlobal) { return; }
+            if (varDeclaration.IsGlobal) {
+                DMVariable global = _proc.CreateGlobalVariable(varDeclaration.Type, varDeclaration.Name);
+
+                //TODO: Don't set to null if the value can be const-evaluated
+                global.Value = new Expressions.Null();
+                if (varDeclaration.Value != null) {
+                    Expressions.GlobalField field = new(global.Type, _proc.GetGlobalVariableId(global.Name).Value);
+                    DMExpression value = DMExpression.Create(_dmObject, _proc, varDeclaration.Value, varDeclaration.Type);
+                    Expressions.Assignment assign = new Expressions.Assignment(field, value);
+
+                    DMObjectTree.AddGlobalInitProcAssign(assign);
+                }
+                
+                return;
+            }
 
             _proc.AddLocalVariable(varDeclaration.Name, varDeclaration.Type);
 

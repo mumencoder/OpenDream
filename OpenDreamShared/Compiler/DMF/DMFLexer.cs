@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace OpenDreamShared.Compiler.DMF {
-    public class DMFLexer : TextLexer {
+    public interface IDMFLexer : ILexer<Token> { }
+    public class DMFLexer : TextLexer, IDMFLexer {
         public static readonly List<string> ValidAttributes = new() {
             "align",
             "allow-html",

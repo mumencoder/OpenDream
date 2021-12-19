@@ -16,7 +16,10 @@ namespace DMCompiler.Compiler.DM {
 
         private bool _unimplementedWarnings;
 
-        public DMParser(DMLexer lexer, bool unimplementedWarnings) : base(lexer) {
+        IDMLexer _dmlexer;
+
+        public DMParser(IDMLexer lexer, bool unimplementedWarnings) : base(lexer) {
+            _dmlexer = lexer;
             _unimplementedWarnings = unimplementedWarnings;
         }
 

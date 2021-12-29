@@ -3,6 +3,7 @@ using DMCompiler.Compiler.DMM;
 using DMCompiler.Compiler.DMPreprocessor;
 using DMCompiler.DM;
 using DMCompiler.DM.Visitors;
+using Experimental = DMCompiler.Compiler.Experimental;
 using OpenDreamShared.Compiler;
 using OpenDreamShared.Json;
 using System;
@@ -70,7 +71,44 @@ namespace DMCompiler {
             return successfulCompile;
         }
 
-        [CanBeNull]
+        public static DMASTFile GetAST(List<string> files) {
+            IDMLexer lexer = null;
+            if (Settings.ExperimentalPreproc) {
+                DMParser.ExperimentalPreproc = true;
+                var preproc = new Experimental.DMPreprocessor();
+                string compilerDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string dmStandardDirectory = Path.Combine(compilerDirectory ?? string.Empty, "DMStandard");
+                preproc.IncludeOuter(new Experimental.SourceText(dmStandardDirectory, "_Standard.dm"));
+                foreach (var file in files) {
+                    var fi = new FileInfo(file);
+                    preproc.IncludeOuter(new Experimental.SourceText(fi.DirectoryName, fi.Name));
+                }
+                lexer = new Experimental.PreprocessorTokenConvert(preproc.GetEnumerator());
+            }
+            else {
+                var preproc = Preprocess(files);
+                lexer = new DMLexer(null, preproc.GetResult());
+            }
+
+            DMParser dmParser = new DMParser(lexer, !Settings.SuppressUnimplementedWarnings);
+
+            VerbosePrint("Parsing");
+            DMASTFile astFile = dmParser.File();
+            return astFile;
+
+        }
+
+        public static int CompileAST(DMASTFile ast) {
+            DMObjectBuilder dmObjectBuilder = new DMObjectBuilder();
+            dmObjectBuilder.BuildObjectTree(ast);
+
+            if (ErrorCount > 0) {
+                return 255;
+            }
+
+            SaveJson(new(), "", "clopen.json");
+            return 0;
+        }
         private static DMPreprocessor Preprocess(List<string> files) {
             DMPreprocessor preprocessor = new DMPreprocessor(true, !Settings.SuppressUnimplementedWarnings);
 
@@ -230,6 +268,7 @@ namespace DMCompiler {
 
     public struct DMCompilerSettings {
         public List<string> Files;
+        public bool ExperimentalPreproc;
         public bool SuppressUnimplementedWarnings;
         public bool DumpPreprocessor;
         public bool NoStandard;

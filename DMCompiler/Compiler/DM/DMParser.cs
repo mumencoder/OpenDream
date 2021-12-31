@@ -1950,9 +1950,8 @@ namespace DMCompiler.Compiler.DM {
             return primary;
         }
 
-        static bool ExperimentalParser = false;
         public DMASTExpression Constant() {
-            if (ExperimentalParser) {
+            if (ExperimentalPreproc) {
                 return ExperimentalConstant();
             }
             else {

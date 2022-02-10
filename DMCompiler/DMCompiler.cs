@@ -24,6 +24,9 @@ namespace DMCompiler {
 
         private static DateTime _compileStartTime;
 
+        public static List<string> IncludedMaps;
+        public static string IncludedInterface;
+
         public static bool Compile(DMCompilerSettings settings) {
             Settings = settings;
             if (Settings.Files == null) return false;
@@ -37,28 +40,36 @@ namespace DMCompiler {
                 Warning(new CompilerWarning(Location.Unknown, "Unimplemented proc & var warnings are currently suppressed"));
             }
 
-            DMPreprocessor preprocessor = Preprocess(settings.Files);
-            if (settings.DumpPreprocessor) {
-                StringBuilder result = new();
-                foreach (Token t in preprocessor.GetResult()) {
-                    result.Append(t.Text);
+            bool successfulCompile = false;
+            if (settings.ExperimentalPreproc) {
+                DMASTFile ast = GetAST(settings.Files);
+                successfulCompile = CompileAST(ast) == 0;
+            } else {
+                DMPreprocessor preprocessor = Preprocess(settings.Files);
+                if (settings.DumpPreprocessor) {
+                    StringBuilder result = new();
+                    foreach (Token t in preprocessor.GetResult()) {
+                        result.Append(t.Text);
+                    }
+
+                    string output = Path.Join(Path.GetDirectoryName(settings.Files?[0]) ?? AppDomain.CurrentDomain.BaseDirectory, "preprocessor_dump.dm");
+                    File.WriteAllText(output, result.ToString());
+                    Console.WriteLine($"Preprocessor output dumped to {output}");
                 }
 
-                string output = Path.Join(Path.GetDirectoryName(settings.Files?[0]) ?? AppDomain.CurrentDomain.BaseDirectory, "preprocessor_dump.dm");
-                File.WriteAllText(output, result.ToString());
-                Console.WriteLine($"Preprocessor output dumped to {output}");
+                successfulCompile = Compile(preprocessor.GetResult());
+                IncludedMaps = preprocessor.IncludedMaps;
+                IncludedInterface = preprocessor.IncludedInterface;
             }
-
-            bool successfulCompile = Compile(preprocessor.GetResult());
 
             if (successfulCompile) {
                 Console.WriteLine($"Compilation succeeded with {WarningCount} warnings");
 
                 //Output file is the first file with the extension changed to .json
                 string outputFile = Path.ChangeExtension(settings.Files[0], "json");
-                List<DreamMapJson> maps = ConvertMaps(preprocessor.IncludedMaps);
+                List<DreamMapJson> maps = ConvertMaps(IncludedMaps);
 
-                SaveJson(maps, preprocessor.IncludedInterface, outputFile);
+                SaveJson(maps, IncludedInterface, outputFile);
             } else {
                 Console.WriteLine($"Compilation failed with {ErrorCount} errors and {WarningCount} warnings");
             }
@@ -81,6 +92,8 @@ namespace DMCompiler {
                     var fi = new FileInfo(file);
                     preproc.IncludeOuter(new Experimental.SourceText(fi.DirectoryName, fi.Name));
                 }
+                IncludedMaps = preproc.IncludedMaps;
+                IncludedInterface = preproc.IncludedInterface;
                 lexer = new Experimental.PreprocessorTokenConvert(preproc.GetEnumerator());
             }
             else {
@@ -103,8 +116,6 @@ namespace DMCompiler {
             if (ErrorCount > 0) {
                 return 255;
             }
-
-            SaveJson(new(), "", "clopen.json");
             return 0;
         }
         private static DMPreprocessor Preprocess(List<string> files) {

@@ -11,6 +11,7 @@ namespace DMCompiler.Compiler.DM {
 
         public void ToggleDebug(bool state) { }
     }
+  
     public partial class DMLexer : TokenLexer, IDMLexer {
         public static List<string> ValidEscapeSequences = new() {
             "icon",

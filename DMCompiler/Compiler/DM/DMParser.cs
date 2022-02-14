@@ -309,7 +309,7 @@ namespace DMCompiler.Compiler.DM {
         public bool PathArray(ref DreamPath path, out DMASTExpression implied_value) {
             //TODO: Multidimensional lists
             implied_value = null;
-            if (Check(TokenType.DM_LeftBracket)) 
+            if (Check(TokenType.DM_LeftBracket))
             {
                 var loc = Current().Location;
                 if (!path.IsDescendantOf(DreamPath.List)) {
@@ -831,6 +831,7 @@ namespace DMCompiler.Compiler.DM {
                 if (body == null) body = new DMASTProcBlockInner(loc, new DMASTProcStatement[0]);
                 Token afterIfBody = Current();
                 bool newLineAfterIf = Newline();
+                Check(TokenType.DM_Semicolon);
                 if (newLineAfterIf) Whitespace();
                 if (Check(TokenType.DM_Else)) {
                     Whitespace();

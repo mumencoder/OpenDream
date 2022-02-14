@@ -151,7 +151,7 @@ namespace DMCompiler.Compiler.Experimental {
                 Advance();
                 if (current_indent != -1) {
                     current_indent = 0;
-                    return ParseNextToken();
+                    return CreateToken(OTT.Newline, "\n");
                 }
                 current_indent = 0;
                 pending_newline = true;

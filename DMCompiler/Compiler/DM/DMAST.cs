@@ -118,6 +118,8 @@ namespace DMCompiler.Compiler.DM {
         public void VisitCallableProcIdentifier(DMASTCallableProcIdentifier procIdentifier) { throw new NotImplementedException(); }
         public void VisitCallableSuper(DMASTCallableSuper super) { throw new NotImplementedException(); }
         public void VisitCallableSelf(DMASTCallableSelf self) { throw new NotImplementedException(); }
+        public void VisitCallableGlobalProc(DMASTCallableGlobalProc globalIdentifier) { throw new NotImplementedException(); }
+
     }
 
     public abstract class DMASTNode : ASTNode<DMASTVisitor> {
@@ -263,7 +265,7 @@ namespace DMCompiler.Compiler.DM {
 
     public class DMASTObjectVarDefinition : DMASTStatement {
         public DreamPath ObjectPath { get => _varDecl.ObjectPath; }
-        public DreamPath? Type { get => _varDecl.TypePath; }
+        public DreamPath? Type { get => _varDecl.IsList ? DreamPath.List : _varDecl.TypePath; }
         public string Name { get => _varDecl.VarName; }
         public DMASTExpression Value;
 
@@ -330,7 +332,7 @@ namespace DMCompiler.Compiler.DM {
     }
 
     public class DMASTProcStatementVarDeclaration : DMASTProcStatement {
-        public DreamPath? Type { get => _varDecl.TypePath; }
+        public DreamPath? Type { get => _varDecl.IsList ? DreamPath.List : _varDecl.TypePath; }
         public string Name { get => _varDecl.VarName; }
         public DMASTExpression Value;
         private ProcVarDeclInfo _varDecl;
@@ -1662,20 +1664,17 @@ namespace DMCompiler.Compiler.DM {
     }
 
     public class DMASTDefinitionParameter : DMASTNode {
-        public DreamPath? ObjectType;
-        public string Name;
+        public DreamPath? ObjectType { get => _paramDecl.IsList ? DreamPath.List : _paramDecl.TypePath; }
+        public string Name { get => _paramDecl.VarName; }
         public DMASTExpression Value;
         public DMValueType Type;
         public DMASTExpression PossibleValues;
 
+        private ProcParameterDeclInfo _paramDecl;
+
         public DMASTDefinitionParameter(Location location, DMASTPath astPath, DMASTExpression value, DMValueType type, DMASTExpression possibleValues) : base(location) {
-            DreamPath path = astPath.Path;
+            _paramDecl = new ProcParameterDeclInfo(astPath.Path);
 
-            int varElementIndex = path.FindElement("var");
-            if (varElementIndex != -1) path = path.RemoveElement(varElementIndex);
-
-            ObjectType = (path.Elements.Length > 1) ? path.FromElements(0, -2) : null;
-            Name = path.LastElement;
             Value = value;
             Type = type;
             PossibleValues = possibleValues;
@@ -1740,6 +1739,20 @@ namespace DMCompiler.Compiler.DM {
         public DMASTCallableSelf(Location location) : base(location){}
         public override void Visit(DMASTVisitor visitor) {
             visitor.VisitCallableSelf(this);
+        }
+    }
+
+    public class DMASTCallableGlobalProc : DMASTExpression, DMASTCallable {
+        public string Identifier;
+
+        public DMASTCallableGlobalProc(Location location, string identifier) : base(location)
+        {
+            Identifier = identifier;
+        }
+
+        public override void Visit(DMASTVisitor visitor)
+        {
+            visitor.VisitCallableGlobalProc(this);
         }
     }
 }

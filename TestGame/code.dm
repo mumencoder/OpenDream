@@ -13,6 +13,16 @@
 		..()
 		loc = locate(5, 5, 1)
 
+	verb/shake()
+		animate(src, pixel_x = -4, time = 2)
+		sleep(2)
+		for (var/i in 1 to 3)
+			animate(src, pixel_x = 4, time = 4)
+			sleep(4)
+			animate(src, pixel_x = -4, time = 4)
+			sleep(4)
+		animate(src, pixel_x = 0, time = 2)
+
 	verb/tell_location()
 		usr << "You are at ([x], [y], [z])"
 
@@ -44,21 +54,6 @@
 		var/v = input("A") as num
 		usr << "you entered [v]"
 
-	verb/test_inf_loop()
-		var/i = 0
-		var/k = 0
-		for()
-			world << "i"
-			i++
-			if(i > 10)
-				 break
-
-		while(1)
-			world << "k"
-			k++
-			if(k > 10)
-				 break
-
 	verb/test_browse()
 		usr << browse({"
 <!DOCTYPE html>
@@ -86,8 +81,9 @@
 		usr << output("help sec griffing me", "honk.browser:foo")
 
 /mob/Stat()
-	statpanel("Status", "CPU: [world.cpu]")
-	stat("time", world.time)
+	if (statpanel("Status"))
+		stat("tick_usage", world.tick_usage)
+		stat("time", world.time)
 
 /world/New()
 	..()

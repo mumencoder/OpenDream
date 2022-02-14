@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using OpenDreamRuntime.Objects;
 using OpenDreamRuntime.Objects.MetaObjects;
 using OpenDreamRuntime.Procs;
@@ -14,8 +13,6 @@ using Robust.Server;
 using Robust.Server.Player;
 using Robust.Shared.Asynchronous;
 using Robust.Shared.Configuration;
-using Robust.Shared.IoC;
-using Robust.Shared.Log;
 
 namespace OpenDreamRuntime {
     partial class DreamManager : IDreamManager {
@@ -32,6 +29,7 @@ namespace OpenDreamRuntime {
 
         // Global state that may not really (really really) belong here
         public List<DreamValue> Globals { get; set; } = new();
+        public Dictionary<string, DreamProc> GlobalProcs { get; set; } = new();
         public DreamList WorldContentsList { get; set; }
         public Dictionary<DreamObject, DreamList> AreaContents { get; set; } = new();
         public Dictionary<DreamObject, int> ReferenceIDs { get; set; } = new();
@@ -51,6 +49,13 @@ namespace OpenDreamRuntime {
 
             ObjectTree = new DreamObjectTree(json);
             SetMetaObjects();
+
+            if (_compiledJson.GlobalProcs != null) {
+                foreach (var procJson in _compiledJson.GlobalProcs) {
+                    GlobalProcs.Add(procJson.Key, ObjectTree.LoadProcJson(procJson.Key, procJson.Value));
+                }
+            }
+
             DreamProcNative.SetupNativeProcs(ObjectTree);
 
             _dreamMapManager.Initialize();
@@ -58,7 +63,11 @@ namespace OpenDreamRuntime {
             WorldInstance.InitSpawn(new DreamProcArguments(null));
 
             if (_compiledJson.Globals != null) {
-                foreach (object globalValue in _compiledJson.Globals) {
+                var jsonGlobals = _compiledJson.Globals;
+                Globals.EnsureCapacity(jsonGlobals.GlobalCount);
+
+                for (int i = 0; i < jsonGlobals.GlobalCount; i++) {
+                    object globalValue = jsonGlobals.Globals.GetValueOrDefault(i, null);
                     Globals.Add(ObjectTree.GetDreamValueFromJsonElement(globalValue));
                 }
             }
@@ -109,6 +118,39 @@ namespace OpenDreamRuntime {
             ObjectTree.SetMetaObject(DreamPath.Turf, new DreamMetaObjectTurf());
             ObjectTree.SetMetaObject(DreamPath.Movable, new DreamMetaObjectMovable());
             ObjectTree.SetMetaObject(DreamPath.Mob, new DreamMetaObjectMob());
+        }
+
+        public void SetGlobalNativeProc(NativeProc.HandlerFn func) {
+            var (name, defaultArgumentValues, argumentNames) = NativeProc.GetNativeInfo(func);
+            var proc = new NativeProc(name, null, argumentNames, null, defaultArgumentValues, func);
+
+            GlobalProcs[name] = proc;
+        }
+
+        public void SetGlobalNativeProc(Func<AsyncNativeProc.State, Task<DreamValue>> func) {
+            var (name, defaultArgumentValues, argumentNames) = NativeProc.GetNativeInfo(func);
+            var proc = new AsyncNativeProc(name, null, argumentNames, null, defaultArgumentValues, func);
+
+            GlobalProcs[name] = proc;
+        }
+
+        public void WriteWorldLog(string message, LogLevel level = LogLevel.Info)
+        {
+            if (!WorldInstance.GetVariable("log").TryGetValueAsDreamResource(out var logRsc))
+            {
+                logRsc = new ConsoleOutputResource();
+                WorldInstance.SetVariableValue("log", new DreamValue(logRsc));
+                Logger.Log(LogLevel.Error, $"Failed to write to the world log, falling back to console output. Original log message follows: [{LogMessage.LogLevelToName(level)}] world.log: {message}");
+            }
+
+            if (logRsc is ConsoleOutputResource) // Output() on ConsoleOutputResource uses LogLevel.Info
+            {
+                Logger.LogS(level, "world.log", message);
+            }
+            else
+            {
+                logRsc.Output(new DreamValue($"[{LogMessage.LogLevelToName(level)}] world.log: {message}"));
+            }
         }
     }
 }

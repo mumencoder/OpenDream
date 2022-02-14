@@ -11,9 +11,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JetBrains.Annotations;
 
 namespace DMCompiler {
     //TODO: Make this not a static class
@@ -124,6 +126,11 @@ namespace DMCompiler {
             if (!Settings.NoStandard) {
                 string compilerDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 string dmStandardDirectory = Path.Combine(compilerDirectory ?? string.Empty, "DMStandard");
+                if (!File.Exists(Path.Combine(dmStandardDirectory, "_Standard.dm")))
+                {
+                    Error(new CompilerError(Location.Unknown, "DMStandard not found."));
+                    return null;
+                }
                 preprocessor.IncludeFile(dmStandardDirectory, "_Standard.dm");
             }
 
@@ -232,13 +239,32 @@ namespace DMCompiler {
             if (DMObjectTree.GlobalInitProc.Bytecode.Length > 0) compiledDream.GlobalInitProc = DMObjectTree.GlobalInitProc.GetJsonRepresentation();
 
             if (DMObjectTree.Globals.Count > 0) {
-                compiledDream.Globals = new List<object>();
+                GlobalListJson globalListJson = new GlobalListJson();
+                globalListJson.GlobalCount = DMObjectTree.Globals.Count;
 
-                foreach (DMVariable global in DMObjectTree.Globals) {
+                // Approximate capacity (4/285 in tgstation, ~3%)
+                globalListJson.Globals = new Dictionary<int, object>((int) (DMObjectTree.Globals.Count * 0.03));
+
+                for (int i = 0; i < DMObjectTree.Globals.Count; i++) {
+                    DMVariable global = DMObjectTree.Globals[i];
                     if (!global.TryAsJsonRepresentation(out var globalJson))
                         throw new Exception($"Failed to serialize global {global.Name}");
 
-                    compiledDream.Globals.Add(globalJson);
+                    if (globalJson != null) {
+                        globalListJson.Globals.Add(i, globalJson);
+                    }
+                }
+                compiledDream.Globals = globalListJson;
+            }
+
+            if (DMObjectTree.GlobalProcs.Count > 0) {
+                compiledDream.GlobalProcs = new(DMObjectTree.GlobalProcs.Count);
+
+                foreach (KeyValuePair<string, DMProc> globalProc in DMObjectTree.GlobalProcs) {
+                    string name = globalProc.Key;
+                    DMProc proc = globalProc.Value;
+
+                    compiledDream.GlobalProcs[name] = proc.GetJsonRepresentation();
                 }
             }
 

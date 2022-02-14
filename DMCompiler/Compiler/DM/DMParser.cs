@@ -189,24 +189,8 @@ namespace DMCompiler.Compiler.DM {
                             Whitespace();
 
                             DMASTExpression value = null;
-                            if (Check(TokenType.DM_LeftBracket)) //TODO: Multidimensional lists
-                            {
-                                //Type information
-                                if (!varPath.IsDescendantOf(DreamPath.List)) {
-                                    var elements = varPath.Elements.ToList();
-                                    elements.Insert(elements.IndexOf("var") + 1, "list");
-                                    varPath = new DreamPath("/" + String.Join("/", elements));
-                                }
+                            PathArray(ref varPath, out value);
 
-                                DMASTExpression size = Expression();
-                                ConsumeRightBracket();
-                                Whitespace();
-
-                                if (size is not null) {
-                                    value = new DMASTNewPath(loc, new DMASTPath(loc, DreamPath.List),
-                                        new[] { new DMASTCallParameter(loc, size) });
-                                }
-                            }
                             if (Check(TokenType.DM_Equals)) {
                                 Whitespace();
                                 value = Expression();
@@ -320,6 +304,32 @@ namespace DMCompiler.Compiler.DM {
             } else {
                 return null;
             }
+        }
+
+        public bool PathArray(ref DreamPath path, out DMASTExpression implied_value) {
+            //TODO: Multidimensional lists
+            implied_value = null;
+            if (Check(TokenType.DM_LeftBracket))
+            {
+                var loc = Current().Location;
+                if (!path.IsDescendantOf(DreamPath.List)) {
+                    var elements = path.Elements.ToList();
+                    elements.Insert(elements.IndexOf("var") + 1, "list");
+                    path = new DreamPath("/" + String.Join("/", elements));
+                }
+
+                Whitespace();
+                DMASTExpression size = Expression();
+                ConsumeRightBracket();
+                Whitespace();
+
+                if (size is not null) {
+                    implied_value = new DMASTNewPath(loc, new DMASTPath(loc, DreamPath.List),
+                        new[] { new DMASTCallParameter(loc, size) });
+                }
+                return true;
+            }
+            return false;
         }
 
         public DMASTCallable Callable() {
@@ -646,25 +656,7 @@ namespace DMCompiler.Compiler.DM {
                 DMASTExpression value = null;
                 Whitespace();
 
-                //TODO: Multidimensional lists
-                if (Check(TokenType.DM_LeftBracket)) {
-                    //Type information
-                    if (varPath is not null && !varPath.Path.IsDescendantOf(DreamPath.List)) {
-                        var elements = varPath.Path.Elements.ToList();
-                        elements.Insert(elements.IndexOf("var") + 1, "list");
-                        varPath = new DMASTPath(loc, new DreamPath("/" + String.Join("/", elements)));
-                    }
-
-                    Whitespace();
-                    DMASTExpression size = Expression();
-                    ConsumeRightBracket();
-                    Whitespace();
-
-                    if (size is not null) {
-                        value = new DMASTNewPath(loc, new DMASTPath(loc,DreamPath.List),
-                            new[] { new DMASTCallParameter(loc, size) });
-                    }
-                }
+                PathArray(ref varPath.Path, out value);
 
                 if (Check(TokenType.DM_Equals)) {
                     if (value != null) Warning("List doubly initialized");
@@ -839,6 +831,7 @@ namespace DMCompiler.Compiler.DM {
                 if (body == null) body = new DMASTProcBlockInner(loc, new DMASTProcStatement[0]);
                 Token afterIfBody = Current();
                 bool newLineAfterIf = Newline();
+                Check(TokenType.DM_Semicolon);
                 if (newLineAfterIf) Whitespace();
                 if (Check(TokenType.DM_Else)) {
                     Whitespace();
@@ -1434,17 +1427,12 @@ namespace DMCompiler.Compiler.DM {
             if (path != null) {
                 var loc = Current().Location;
                 Whitespace();
-                if (Check(TokenType.DM_LeftBracket)) {
-                    Whitespace();
-                    DMASTExpression expression = Expression();
-                    if (expression != null && expression is not DMASTExpressionConstant) Error("Expected a constant expression");
-                    Whitespace();
-                    ConsumeRightBracket();
-                }
 
                 DMASTExpression value = null;
                 DMValueType type;
                 DMASTExpression possibleValues = null;
+
+                PathArray(ref path.Path, out value);
 
                 if (Check(TokenType.DM_Equals)) {
                     Whitespace();
@@ -1785,7 +1773,7 @@ namespace DMCompiler.Compiler.DM {
                 var loc = Current().Location;
                 while (Check(TokenType.DM_StarStar)) {
                     Whitespace();
-                    DMASTExpression b = ExpressionIn();
+                    DMASTExpression b = ExpressionUnary();
                     if (b == null) Error("Expected an expression");
                     a = new DMASTPower(loc, a, b);
                 }
@@ -2029,32 +2017,43 @@ namespace DMCompiler.Compiler.DM {
                         } else if (c == '\\' && bracketNesting == 0) {
                             string escapeSequence = String.Empty;
 
-                            do {
-                                c = tokenValue[++i];
-                                escapeSequence += c;
+                            if (i == tokenValue.Length) {
+                                Error("Invalid escape sequence");
+                            }
+                            c = tokenValue[++i];
 
-                                if (escapeSequence == "[" || escapeSequence == "]") {
+                            if (char.IsLetter(c)) {
+                                while (i < tokenValue.Length && char.IsLetter(tokenValue[i])) {
+                                    escapeSequence += tokenValue[i++];
+                                }
+                                i--;
+                                if (DMLexer.ValidEscapeSequences.Contains(escapeSequence)) {
+                                    stringBuilder.Append('\\');
                                     stringBuilder.Append(escapeSequence);
-                                    break;
-                                } else if (escapeSequence == "\"" || escapeSequence == "\\" || escapeSequence == "'") {
-                                    stringBuilder.Append(escapeSequence);
-                                    break;
-                                } else if (escapeSequence == "n") {
+                                } else if (escapeSequence.StartsWith("n")) {
                                     stringBuilder.Append('\n');
-                                    break;
-                                } else if (escapeSequence == "t") {
+                                    stringBuilder.Append(escapeSequence.Skip(1).ToArray());
+                                } else if (escapeSequence.StartsWith("t")) {
                                     stringBuilder.Append('\t');
-                                    break;
+                                    stringBuilder.Append(escapeSequence.Skip(1).ToArray());
                                 } else if (escapeSequence == "ref") {
                                     currentInterpolationType = StringFormatTypes.Ref;
-                                    break;
-                                } else if (DMLexer.ValidEscapeSequences.Contains(escapeSequence)) { //Unimplemented escape sequence
-                                    break;
+                                } else {
+                                    Error("Invalid escape sequence \"\\" + escapeSequence + "\"");
                                 }
-                            } while (c != ' ' && i < tokenValue.Length - 1);
-
-                            if (!DMLexer.ValidEscapeSequences.Contains(escapeSequence)) {
-                                Error("Invalid escape sequence \"\\" + escapeSequence + "\"");
+                            } else {
+                                escapeSequence += c;
+                                if (escapeSequence == "[" || escapeSequence == "]") {
+                                    stringBuilder.Append(escapeSequence);
+                                } else if (escapeSequence == "<" || escapeSequence == ">") {
+                                    stringBuilder.Append(escapeSequence);
+                                } else if (escapeSequence == "\"" || escapeSequence == "'" || escapeSequence == "\\") {
+                                    stringBuilder.Append(escapeSequence);
+                                } else if (escapeSequence == " ") {
+                                    stringBuilder.Append(escapeSequence);
+                                } else { //Unimplemented escape sequence
+                                    Error("Invalid escape sequence \"\\" + escapeSequence + "\"");
+                                }
                             }
                         } else if (bracketNesting == 0) {
                             stringBuilder.Append(c);
@@ -2163,7 +2162,7 @@ namespace DMCompiler.Compiler.DM {
         }
 
         private DMASTExpression ParseProcCall(DMASTExpression expression) {
-            if (expression is not (DMASTCallable or DMASTIdentifier or DMASTDereference)) return expression;
+            if (expression is not (DMASTCallable or DMASTIdentifier or DMASTDereference or DMASTGlobalIdentifier)) return expression;
 
             Whitespace();
 
@@ -2179,11 +2178,15 @@ namespace DMCompiler.Compiler.DM {
 
             DMASTCallParameter[] callParameters = ProcCall();
             if (callParameters != null) {
-                if (expression is DMASTDereference deref) {
+                if (expression is DMASTGlobalIdentifier gid) {
+                    var globalProc = new DMASTCallableGlobalProc(expression.Location, gid.Identifier);
+                    return new DMASTProcCall(gid.Location, globalProc, callParameters);
+                }
+                else if (expression is DMASTDereference deref) {
                     DMASTDereferenceProc derefProc = new DMASTDereferenceProc(deref.Location, deref.Expression, deref.Property, deref.Type, deref.Conditional);
-
                     return new DMASTProcCall(expression.Location, derefProc, callParameters);
-                } else if (expression is DMASTCallable callable) {
+                }
+                else if (expression is DMASTCallable callable) {
                     return new DMASTProcCall(expression.Location, callable, callParameters);
                 }
 

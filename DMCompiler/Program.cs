@@ -20,6 +20,7 @@ namespace DMCompiler {
             foreach (string arg in args) {
                 switch (arg) {
                     case "--suppress-unimplemented": settings.SuppressUnimplementedWarnings = true; break;
+                    case "--dump-ast": settings.DumpAST = true; break;
                     case "--dump-preprocessor": settings.DumpPreprocessor = true; break;
                     case "--no-standard": settings.NoStandard = true; break;
                     case "--verbose": settings.Verbose = true; break;

@@ -137,6 +137,12 @@ namespace DMCompiler {
             VerbosePrint("Constant folding");
             astSimplifier.SimplifyAST(astFile);
 
+            if (Settings.DumpAST) {
+                var astSrslr = new DMASTSerializer(astFile);
+                string out_file = Path.Join( Path.GetDirectoryName(Settings.Files[0]), "ast.json");
+                File.WriteAllText(out_file, astSrslr.Result);
+            }
+
             DMObjectBuilder dmObjectBuilder = new DMObjectBuilder();
             dmObjectBuilder.BuildObjectTree(astFile);
 
@@ -253,6 +259,7 @@ namespace DMCompiler {
     public struct DMCompilerSettings {
         public List<string> Files;
         public bool SuppressUnimplementedWarnings;
+        public bool DumpAST;
         public bool DumpPreprocessor;
         public bool NoStandard;
         public bool Verbose;

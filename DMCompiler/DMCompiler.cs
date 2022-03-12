@@ -18,7 +18,7 @@ using JetBrains.Annotations;
 
 namespace DMCompiler {
     //TODO: Make this not a static class
-    public static class DMCompiler {
+    public static partial class DMCompiler {
         public static int ErrorCount = 0;
         public static int WarningCount = 0;
         public static DMCompilerSettings Settings;

@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 using OpenDreamShared.Compiler;
 using OpenDreamShared.Dream;
 using OpenDreamShared.Dream.Procs;
@@ -123,6 +124,8 @@ namespace DMCompiler.Compiler.DM {
     }
 
     public abstract class DMASTNode : ASTNode<DMASTVisitor> {
+
+        [JsonConstructor]
         public DMASTNode(Location location) {
             Location = location;
         }
@@ -225,6 +228,9 @@ namespace DMCompiler.Compiler.DM {
         public DMASTDefinitionParameter[] Parameters;
         public DMASTProcBlockInner Body;
 
+        [JsonConstructor]
+        public DMASTProcDefinition(Location location) : base(location) { }
+
         public DMASTProcDefinition(Location location, DreamPath path, DMASTDefinitionParameter[] parameters, DMASTProcBlockInner body) : base(location)
         {
             int procElementIndex = path.FindElement("proc");
@@ -269,6 +275,7 @@ namespace DMCompiler.Compiler.DM {
         public string Name { get => _varDecl.VarName; }
         public DMASTExpression Value;
 
+        [JsonProperty]
         private ObjVarDeclInfo _varDecl;
 
         public bool IsStatic { get => _varDecl.IsStatic; }
@@ -278,6 +285,9 @@ namespace DMCompiler.Compiler.DM {
         public bool IsTmp { get => _varDecl.IsTmp; }
 
         public DMValueType ValType;
+
+        [JsonConstructor]
+        public DMASTObjectVarDefinition(Location location) : base(location) { }
 
         public DMASTObjectVarDefinition(Location location, DreamPath path, DMASTExpression value, DMValueType valType = DMValueType.Anything) : base(location)
         {
@@ -307,6 +317,9 @@ namespace DMCompiler.Compiler.DM {
         public DreamPath ObjectPath;
         public string VarName;
         public DMASTExpression Value;
+
+        [JsonConstructor]
+        public DMASTObjectVarOverride(Location location) : base(location) { }
 
         public DMASTObjectVarOverride(Location location, DreamPath path, DMASTExpression value) : base(location) {
             ObjectPath = path.FromElements(0, -2);
@@ -340,6 +353,8 @@ namespace DMCompiler.Compiler.DM {
         public bool IsGlobal { get => _varDecl.IsStatic; }
         public bool IsConst { get => _varDecl.IsConst; }
 
+        [JsonConstructor]
+        public DMASTProcStatementVarDeclaration(Location location) : base(location) { }
         public DMASTProcStatementVarDeclaration(Location location, DMASTPath path, DMASTExpression value) : base(location)
         {
             _varDecl = new ProcVarDeclInfo(path.Path);
@@ -1672,6 +1687,8 @@ namespace DMCompiler.Compiler.DM {
 
         private ProcParameterDeclInfo _paramDecl;
 
+        [JsonConstructor]
+        public DMASTDefinitionParameter(Location location) : base(location) { }
         public DMASTDefinitionParameter(Location location, DMASTPath astPath, DMASTExpression value, DMValueType type, DMASTExpression possibleValues) : base(location) {
             _paramDecl = new ProcParameterDeclInfo(astPath.Path);
 

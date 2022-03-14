@@ -1,6 +1,7 @@
 ﻿
 using System.Collections.Generic;
 using OpenDreamShared.Dream;
+using Newtonsoft.Json;
 
 namespace DMCompiler.Compiler.DM
 {
@@ -64,6 +65,9 @@ namespace DMCompiler.Compiler.DM
         public DreamPath ObjectPath;
         public bool IsTmp;
         public bool IsToplevel;
+
+        [JsonConstructor]
+        public ObjVarDeclInfo() { }
 
         public ObjVarDeclInfo(DreamPath path)
         {

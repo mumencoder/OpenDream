@@ -239,6 +239,20 @@ namespace OpenDreamRuntime {
             }
         }
 
+        public bool TryGetValueAsBitty(out uint b) {
+            int i;
+            if (TryGetValueAsInteger(out i)) {
+                b = (uint)i;
+                if (b < 0) {
+                    b = 0x1000000 + b;
+                } else {
+                    b = 0xFFFFFF & b;
+                }
+                return true;
+            }
+            b = 0;
+            return false;
+        }
         public bool IsTruthy() {
             switch (Type) {
                 case DreamValue.DreamValueType.DreamObject:

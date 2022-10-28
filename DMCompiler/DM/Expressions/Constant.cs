@@ -162,6 +162,9 @@ namespace DMCompiler.DM.Expressions {
                 return base.Add(rhs);
             }
 
+            if ((int)rhsNum.Value == 0) {
+                throw new CompileErrorException(rhs.Location, $"Attempt to divide by zero");
+            }
             return new Number(Location, Value / rhsNum.Value);
         }
 
@@ -170,6 +173,9 @@ namespace DMCompiler.DM.Expressions {
                 return base.Add(rhs);
             }
 
+            if ((int)rhsNum.Value == 0) {
+                throw new CompileErrorException(rhs.Location, $"Attempt to divide by zero");
+            }
             return new Number(Location, Value % rhsNum.Value);
         }
 

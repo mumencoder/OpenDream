@@ -711,10 +711,24 @@ namespace OpenDreamRuntime.Procs {
                 }
 
                 state.Push(new DreamValue(newList));
-            } else if (first.Value != null && second.Value != null) {
-                state.Push(new DreamValue(first.GetValueAsInteger() & second.GetValueAsInteger()));
-            } else {
+            } else if (first.Type == DreamValue.DreamValueType.Float) {
+                uint v1, v2;
+                if (first.TryGetValueAsBitty(out v1)) {
+                    if (second.TryGetValueAsBitty(out v2)) {
+                        state.Push(new DreamValue(v1 & v2));
+                    } else if (second == DreamValue.Null) {
+                        state.Push(new DreamValue(0));
+                    }
+                } else {
+                    if (second.TryGetValueAsBitty(out v2)) {
+                        state.Push(new DreamValue(v2));
+                    }
+                }
+            } else if (first == DreamValue.Null) {
                 state.Push(new DreamValue(0));
+            }
+            else {
+                throw new Exception("Invalid or operation on " + first + " and " + second);
             }
 
             return null;
@@ -725,7 +739,11 @@ namespace OpenDreamRuntime.Procs {
             var input = state.Pop();
             if (input.TryGetValueAsInteger(out var value))
             {
-                state.Push(new DreamValue((~value) & 0xFFFFFF));
+                if (value < 0) {
+                    state.Push(new DreamValue(0xFFFFFF));
+                } else {
+                    state.Push(new DreamValue((~value) & 0xFFFFFF));
+                }
             }
             else
             {
@@ -744,7 +762,14 @@ namespace OpenDreamRuntime.Procs {
             DreamValue first = state.Pop();
 
             if (first.Type == DreamValue.DreamValueType.DreamObject) {              // Object | y
-                if (first.Value != null) {
+                if (first == DreamValue.Null) {
+                    if (second.Type == DreamValue.DreamValueType.Float || second.Type == DreamValue.DreamValueType.String || second == DreamValue.Null) {
+                        state.Push(second);
+                    } else {
+                        state.Push(new DreamValue(0));
+                    }
+                }
+                else if (first.Value != null) {
                     IDreamMetaObject metaObject = first.GetValueAsDreamObject().ObjectDefinition.MetaObject;
 
                     if (metaObject != null) {
@@ -753,18 +778,21 @@ namespace OpenDreamRuntime.Procs {
                         throw new Exception("Invalid or operation on " + first + " and " + second);
                     }
                 } else {
-                    state.Push(DreamValue.Null);
+                    state.Push(new DreamValue(second));
                 }
-            } else if (second.Value != null) {                                      // Non-Object | y
-                switch (first.Type) {
-                    case DreamValue.DreamValueType.Float when second.Type == DreamValue.DreamValueType.Float:
-                        state.Push(new DreamValue(first.GetValueAsInteger() | second.GetValueAsInteger()));
-                        break;
-                    default:
-                        throw new Exception("Invalid or operation on " + first + " and " + second);
+            } else if (first.Type == DreamValue.DreamValueType.Float) {
+                uint v1, v2;
+                if (first.TryGetValueAsBitty(out v1)) {
+                    if (second.TryGetValueAsBitty(out v2)) {
+                        state.Push(new DreamValue(v1 | v2));
+                    } else if (second == DreamValue.Null) {
+                        state.Push(new DreamValue(v1));
+                    }
+                } else {
+                    if (second.TryGetValueAsBitty(out v2)) {
+                        state.Push(new DreamValue(v2));
+                    }
                 }
-            } else if (first.TryGetValueAsInteger(out int firstInt)) {
-                state.Push(new DreamValue(firstInt));
             } else {
                 throw new Exception("Invalid or operation on " + first + " and " + second);
             }
@@ -796,9 +824,25 @@ namespace OpenDreamRuntime.Procs {
 
                     state.Push(DreamValue.Null);
                     break;
-                case DreamValue.DreamValueType.Float when second.Type == DreamValue.DreamValueType.Float:
-                    state.Push(new DreamValue(first.GetValueAsInteger() << second.GetValueAsInteger()));
+                case DreamValue.DreamValueType.Float:
+                    first.TryGetValueAsFloat(out var f1);
+                    if (f1 < 0) {
+                        state.Push(new DreamValue(0));
+                    } else if (first.TryGetValueAsBitty(out var v1)) {
+                        if (second.TryGetValueAsInteger(out var v2)) {
+                            if (v2 >= 0) {
+                                state.Push(new DreamValue((v1 << second.GetValueAsInteger()) & 0xFFFFFF));
+                            } else {
+                                state.Push(new DreamValue(v1));
+                            }
+                        } else {
+                            state.Push(new DreamValue(v1));
+                        }
+                    } else {
+                        state.Push(new DreamValue(v1));
+                    }
                     break;
+                case DreamValue.DreamValueType.String: state.Push(new DreamValue(0)); break;
                 default:
                     throw new Exception("Invalid bit shift left operation on " + first + " and " + second);
             }
@@ -815,8 +859,22 @@ namespace OpenDreamRuntime.Procs {
 
             if (first == DreamValue.Null) {
                 state.Push(new DreamValue(0));
-            } else if (first.Type == DreamValue.DreamValueType.Float && second.Type == DreamValue.DreamValueType.Float) {
-                state.Push(new DreamValue(first.GetValueAsInteger() >> second.GetValueAsInteger()));
+            } else if (first.Type == DreamValue.DreamValueType.Float) {
+                if (first.TryGetValueAsBitty(out var v1)) {
+                    if (second.TryGetValueAsInteger(out var v2)) {
+                        if (v2 < 0) {
+                            state.Push(new DreamValue(v1));
+                        } else {
+                            state.Push(new DreamValue( (v1 >> second.GetValueAsInteger()) & 0xFFFFFF) );
+                        }
+                    } else {
+                        state.Push(new DreamValue(v1));
+                    }
+                } else {
+                    state.Push(new DreamValue(v1));
+                }
+            } else if (first.Type == DreamValue.DreamValueType.String) {
+                state.Push(new DreamValue(0));
             } else {
                 throw new Exception("Invalid bit shift right operation on " + first + " and " + second);
             }
@@ -970,11 +1028,7 @@ namespace OpenDreamRuntime.Procs {
             DreamValue second = state.Pop();
             DreamValue first = state.Pop();
 
-            if (first.Type == DreamValue.DreamValueType.Float && second.Type == DreamValue.DreamValueType.Float) {
-                state.Push(new DreamValue(first.GetValueAsInteger() % second.GetValueAsInteger()));
-            } else {
-                throw new Exception("Invalid modulus operation on " + first + " and " + second);
-            }
+            state.Push(ModulusValues(first, second));
 
             return null;
         }
@@ -1013,7 +1067,16 @@ namespace OpenDreamRuntime.Procs {
             DreamValue value = state.Pop();
 
             switch (value.Type) {
+                case DreamValue.DreamValueType.DreamObject:
+                    if (value.Value == null) {
+                        state.Push(new DreamValue(0));
+                    }
+                    else {
+                        throw new Exception("Invalid negate operation on " + value);
+                    }
+                    break;
                 case DreamValue.DreamValueType.Float: state.Push(new DreamValue(-value.GetValueAsFloat())); break;
+                case DreamValue.DreamValueType.String: state.Push(new DreamValue(0)); break;
                 default: throw new Exception("Invalid negate operation on " + value);
             }
 
@@ -1024,8 +1087,19 @@ namespace OpenDreamRuntime.Procs {
             DreamValue second = state.Pop();
             DreamValue first = state.Pop();
 
-            if (first.TryGetValueAsFloat(out var floatFirst) && second.TryGetValueAsFloat(out var floatSecond)) {
-                state.Push(new DreamValue(MathF.Pow(floatFirst, floatSecond)));
+            if (first.TryGetValueAsFloat(out var floatFirst)) {
+                if (second.TryGetValueAsFloat(out var floatSecond)) {
+                    state.Push(new DreamValue(MathF.Pow(floatFirst, floatSecond)));
+                }
+                else {
+                    state.Push(new DreamValue(1));
+                }
+            } else if (first == DreamValue.Null && second.Type == DreamValue.DreamValueType.String) {
+                state.Push(new DreamValue(1));
+            } else if (first == DreamValue.Null && second.Type == DreamValue.DreamValueType.Float) {
+                state.Push(new DreamValue(0));
+            } else if (first == DreamValue.Null && second == DreamValue.Null) {
+                state.Push(new DreamValue(1));
             } else {
                 throw new Exception("Invalid power operation on " + first + " and " + second);
             }
@@ -1072,8 +1146,13 @@ namespace OpenDreamRuntime.Procs {
             DreamValue first = state.Pop();
             DreamValue? output = null;
 
-            if (second.Value == null) {
-                output = first;
+            if (second == DreamValue.Null) {
+                if (first == DreamValue.Null) {
+                    output = new(0);
+                }
+                else if (first.Type != DreamValue.DreamValueType.String) {
+                    output = first;
+                }
             } else if (first.Value == null && second.Type == DreamValue.DreamValueType.Float) {
                 output = new DreamValue(-second.GetValueAsFloat());
             } else switch (first.Type) {
@@ -1137,8 +1216,9 @@ namespace OpenDreamRuntime.Procs {
             DreamValue result;
 
             if (first.TryGetValueAsInteger(out int firstInt) && firstInt == 0 && second == DreamValue.Null) result = new DreamValue(1);
-            else if (first == DreamValue.Null && second.TryGetValueAsInteger(out int secondInt) && secondInt == 0) result = new DreamValue(1);
-            else result = new DreamValue((IsEqual(first, second) || IsGreaterThan(first, second)) ? 1 : 0);
+            else if (first == DreamValue.Null && second.TryGetValueAsInteger(out int secondInt) && secondInt == 0) { result = new DreamValue( 1 ); }
+            else if (first == DreamValue.Null && second.TryGetValueAsString(out var s) && s == "") { result = new DreamValue(1); } 
+            else { result = new DreamValue((IsEqual(first, second) || IsGreaterThan(first, second)) ? 1 : 0); }
 
             state.Push(result);
             return null;
@@ -1158,8 +1238,9 @@ namespace OpenDreamRuntime.Procs {
             DreamValue result;
 
             if (first.TryGetValueAsInteger(out int firstInt) && firstInt == 0 && second == DreamValue.Null) result = new DreamValue(1);
-            else if (first == DreamValue.Null && second.TryGetValueAsInteger(out int secondInt) && secondInt == 0) result = new DreamValue(1);
-            else result = new DreamValue((IsEqual(first, second) || IsLessThan(first, second)) ? 1 : 0);
+            else if (first == DreamValue.Null && second.TryGetValueAsInteger(out int secondInt) && secondInt == 0) { result = new DreamValue(1); }
+            else if (first == DreamValue.Null && second.TryGetValueAsString(out var s) && s == "") { result = new DreamValue(1); }
+            else { result = new DreamValue((IsEqual(first, second) || IsLessThan(first, second)) ? 1 : 0); }
 
             state.Push(result);
             return null;
@@ -1927,9 +2008,9 @@ namespace OpenDreamRuntime.Procs {
 
                 return true;
             }
+            return IsEqual(first, second);
 
-
-            throw new NotImplementedException("Equivalence comparison for " + first + " and " + second + " is not implemented");
+            // throw new NotImplementedException("Equivalence comparison for " + first + " and " + second + " is not implemented");
         }
 
         private static bool IsGreaterThan(DreamValue first, DreamValue second) {
@@ -1937,12 +2018,14 @@ namespace OpenDreamRuntime.Procs {
                 case DreamValue.DreamValueType.Float when second.Type == DreamValue.DreamValueType.Float:
                     return first.GetValueAsFloat() > second.GetValueAsFloat();
                 case DreamValue.DreamValueType.Float when second.Value == null:
-                    return first.GetValueAsFloat() > 0;
+                    return first.GetValueAsFloat() >= 0;
                 case DreamValue.DreamValueType.String when second.Type == DreamValue.DreamValueType.String:
                     return string.Compare(first.GetValueAsString(), second.GetValueAsString(), StringComparison.Ordinal) > 0;
                 default: {
-                    if (first.Value == null && second.Type == DreamValue.DreamValueType.Float) {
-                        return 0 > second.GetValueAsFloat();
+                    if (first == DreamValue.Null) {
+                        if (second.Type == DreamValue.DreamValueType.Float) return 0 > second.GetValueAsFloat();
+                        if (second.TryGetValueAsString(out var s)) return false;
+                        if (second.Value == null) return false;
                     }
                     throw new Exception("Invalid greater than comparison on " + first + " and " + second);
                 }
@@ -1958,8 +2041,10 @@ namespace OpenDreamRuntime.Procs {
                 case DreamValue.DreamValueType.String when second.Type == DreamValue.DreamValueType.String:
                     return string.Compare(first.GetValueAsString(), second.GetValueAsString(), StringComparison.Ordinal) < 0;
                 default: {
-                    if (first.Value == null && second.Type == DreamValue.DreamValueType.Float) {
-                        return 0 < second.GetValueAsFloat();
+                    if (first == DreamValue.Null) {
+                        if (second.Type == DreamValue.DreamValueType.Float) return 0 < second.GetValueAsFloat();
+                        if (second.TryGetValueAsString(out var s)) return s != "";
+                        if (second.Value == null) return false;
                     }
                     throw new Exception("Invalid less than comparison between " + first + " and " + second);
                 }
@@ -1967,15 +2052,22 @@ namespace OpenDreamRuntime.Procs {
         }
 
         private static DreamValue MultiplyValues(DreamValue first, DreamValue second) {
-            if (first == DreamValue.Null || second == DreamValue.Null) {
+            if (first == DreamValue.Null) {
                 return new(0);
             } else if (first.TryGetValueAsDreamObject(out var firstObject)) {
                 if (firstObject.ObjectDefinition.MetaObject == null)
                     throw new Exception("Invalid multiply operation on " + first + " and " + second);
 
                 return firstObject.ObjectDefinition.MetaObject.OperatorMultiply(first, second);
-            } else if (first.Type == DreamValue.DreamValueType.Float && second.Type == DreamValue.DreamValueType.Float) {
-                return new(first.GetValueAsFloat() * second.GetValueAsFloat());
+            } else if (first.Type == DreamValue.DreamValueType.Float) {
+                if (second.Type == DreamValue.DreamValueType.Float) {
+                    return new(first.GetValueAsFloat() * second.GetValueAsFloat());
+                } else if (second == DreamValue.Null || second.Type == DreamValue.DreamValueType.String) {
+                    return new(0);
+                }
+                return first;
+            } else if (first.Type == DreamValue.DreamValueType.Float && second.Type == DreamValue.DreamValueType.String) {
+                return new DreamValue(0);
             } else {
                 throw new Exception("Invalid multiply operation on " + first + " and " + second);
             }
@@ -1984,11 +2076,14 @@ namespace OpenDreamRuntime.Procs {
         private static DreamValue DivideValues(DreamValue first, DreamValue second) {
             if (first == DreamValue.Null) {
                 return new(0);
-            } else if (first.TryGetValueAsFloat(out var firstFloat) && second.TryGetValueAsFloat(out var secondFloat)) {
-                if (secondFloat == 0) {
-                    throw new Exception("Division by zero");
+            } else if (first.TryGetValueAsFloat(out var firstFloat)) {
+                if (second.TryGetValueAsFloat(out var secondFloat)) {
+                    if (secondFloat == 0) {
+                        throw new Exception("Division by zero");
+                    }
+                    return new(firstFloat / secondFloat);
                 }
-                return new(firstFloat / secondFloat);
+                return first;
             } else {
                 throw new Exception("Invalid divide operation on " + first + " and " + second);
             }
@@ -2018,14 +2113,38 @@ namespace OpenDreamRuntime.Procs {
                 }
 
                 return new DreamValue(newList);
+            } else if (first.Type == DreamValue.DreamValueType.Float) {
+                uint v1;
+                if (first.TryGetValueAsBitty(out v1)) {
+                    uint v2;
+                    if (second.TryGetValueAsBitty(out v2)) {
+                        return new DreamValue(v1 ^ v2);
+                    } else if (second.Type == DreamValue.DreamValueType.String) {
+                        throw new Exception("Invalid xor operation on " + first + " and " + second);
+                    } else {
+                        return new DreamValue(v1);
+                    }
+                }
+                return DreamValue.Null;
+            } else if (first == DreamValue.Null) {
+                if (second == DreamValue.Null) {
+                    return DreamValue.Null;
+                } else {
+                    return second;
+                }
             } else {
-                return new DreamValue(first.GetValueAsInteger() ^ second.GetValueAsInteger());
+                throw new Exception("Invalid xor operation on " + first + " and " + second);
             }
         }
 
         private static DreamValue ModulusValues(DreamValue first, DreamValue second) {
             if (first.Type == DreamValue.DreamValueType.Float && second.Type == DreamValue.DreamValueType.Float) {
                 return new DreamValue(first.GetValueAsInteger() % second.GetValueAsInteger());
+            } else if (first == DreamValue.Null) {
+                if (second == DreamValue.Null || second.Type == DreamValue.DreamValueType.String) {
+                    throw new Exception("Invalid modulus operation on " + first + " and " + second);
+                }
+                return new DreamValue(0);
             } else {
                 throw new Exception("Invalid modulus operation on " + first + " and " + second);
             }

@@ -94,6 +94,24 @@ namespace Content.Tests
             }
         }
 
+        public (bool Success, DreamValue Returned, Exception? except) RunNewTest() {
+            var prev = _dreamMan.LastDMException;
+
+            var result = DreamThread.Run(async (state) => {
+                if (_dreamMan.WorldInstance.GetProc("New") != null) {
+                    return await state.Call(_dreamMan.WorldInstance.GetProc("New"), null, null, new DreamProcArguments(null));
+                } else {
+                    Assert.Fail($"No global proc named RunTest");
+                    return DreamValue.Null;
+                }
+            });
+            bool retSuccess = _dreamMan.LastDMException == prev; // Works because "null == null" is true in this language.
+            if (retSuccess)
+                return (retSuccess, result, null);
+            else
+                return (false, result, _dreamMan.LastDMException);
+        }
+
         private (bool Success, DreamValue Returned, Exception? except) RunTest() {
             var prev = _dreamMan.LastDMException;
 

@@ -76,7 +76,7 @@ namespace DMCompiler.DM.Visitors {
             statementWhile.Body?.Visit(this);
         }
 
-        public void VisitProcStatementInfLoop(DMASTProcStatementInfLoop statementInfLoop){
+        public void VisitProcStatementInfLoop(DMASTProcStatementInfLoop statementInfLoop) {
             statementInfLoop.Body?.Visit(this);
         }
 
@@ -254,8 +254,8 @@ namespace DMCompiler.DM.Visitors {
                 DMASTConstantInteger exprInteger = not.Expression as DMASTConstantInteger;
                 DMASTConstantFloat exprFloat = not.Expression as DMASTConstantFloat;
 
-                if (exprInteger != null) expression = new DMASTConstantInteger(expression.Location, (exprInteger.Value != 0) ? 1 : 0);
-                else if (exprFloat != null) expression = new DMASTConstantFloat(expression.Location, (exprFloat.Value != 0) ? 1 : 0);
+                if (exprInteger != null) expression = new DMASTConstantInteger(expression.Location, (exprInteger.Value != 0) ? 0 : 1);
+                else if (exprFloat != null) expression = new DMASTConstantFloat(expression.Location, (exprFloat.Value != 0) ? 0 : 1);
 
                 return;
             }
@@ -292,34 +292,6 @@ namespace DMCompiler.DM.Visitors {
                 return;
             }
 
-            DMASTLeftShift leftShift = expression as DMASTLeftShift;
-            if (leftShift != null) {
-                SimplifyExpression(ref leftShift.A);
-                SimplifyExpression(ref leftShift.B);
-                if (leftShift.A is not DMASTExpressionConstant || leftShift.B is not DMASTExpressionConstant) return;
-
-                DMASTConstantInteger aInteger = leftShift.A as DMASTConstantInteger;
-                DMASTConstantInteger bInteger = leftShift.B as DMASTConstantInteger;
-
-                if (aInteger != null && bInteger != null) expression = new DMASTConstantInteger(expression.Location, aInteger.Value << bInteger.Value);
-
-                return;
-            }
-
-            DMASTRightShift rightShift = expression as DMASTRightShift;
-            if (rightShift != null) {
-                SimplifyExpression(ref rightShift.A);
-                SimplifyExpression(ref rightShift.B);
-                if (rightShift.A is not DMASTExpressionConstant || rightShift.B is not DMASTExpressionConstant) return;
-
-                DMASTConstantInteger aInteger = rightShift.A as DMASTConstantInteger;
-                DMASTConstantInteger bInteger = rightShift.B as DMASTConstantInteger;
-
-                if (aInteger != null && bInteger != null) expression = new DMASTConstantInteger(expression.Location, aInteger.Value >> bInteger.Value);
-
-                return;
-            }
-
             DMASTBinaryAnd binaryAnd = expression as DMASTBinaryAnd;
             if (binaryAnd != null) {
                 SimplifyExpression(ref binaryAnd.A);
@@ -329,7 +301,7 @@ namespace DMCompiler.DM.Visitors {
                 DMASTConstantInteger aInteger = binaryAnd.A as DMASTConstantInteger;
                 DMASTConstantInteger bInteger = binaryAnd.B as DMASTConstantInteger;
 
-                if (aInteger != null && bInteger != null) expression = new DMASTConstantInteger(expression.Location, aInteger.Value & bInteger.Value);
+                if (aInteger != null && bInteger != null && aInteger.Value >= 0 && bInteger.Value > 0) expression = new DMASTConstantInteger(expression.Location, aInteger.Value & bInteger.Value);
 
                 return;
             }
@@ -343,7 +315,7 @@ namespace DMCompiler.DM.Visitors {
                 DMASTConstantInteger aInteger = binaryOr.A as DMASTConstantInteger;
                 DMASTConstantInteger bInteger = binaryOr.B as DMASTConstantInteger;
 
-                if (aInteger != null && bInteger != null) expression = new DMASTConstantInteger(expression.Location, aInteger.Value | bInteger.Value);
+                if (aInteger != null && bInteger != null && aInteger.Value >= 0 && bInteger.Value > 0) expression = new DMASTConstantInteger(expression.Location, aInteger.Value | bInteger.Value);
 
                 return;
             }
@@ -355,7 +327,13 @@ namespace DMCompiler.DM.Visitors {
 
                 DMASTConstantInteger valueInteger = binaryNot.Value as DMASTConstantInteger;
 
-                if (valueInteger != null) expression = new DMASTConstantInteger(expression.Location, (~valueInteger.Value) & 0xFFFFFF);
+                if (valueInteger != null) {
+                    if (valueInteger.Value < 0) {
+                        expression = new DMASTConstantInteger(expression.Location, 0xFFFFFF);
+                    } else {
+                        expression = new DMASTConstantInteger(expression.Location, (~valueInteger.Value) & 0xFFFFFF);
+                    }
+                }
 
                 return;
             }
@@ -510,9 +488,8 @@ namespace DMCompiler.DM.Visitors {
             }
 
             DMASTAddText addtext = expression as DMASTAddText;
-            if(addtext != null) {
-                foreach (DMASTCallParameter parameter in addtext.Parameters)
-                {
+            if (addtext != null) {
+                foreach (DMASTCallParameter parameter in addtext.Parameters) {
                     SimplifyExpression(ref parameter.Value);
                 }
 

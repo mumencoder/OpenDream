@@ -20,7 +20,7 @@ using Robust.Shared.Utility;
 
 namespace DMCompiler {
     //TODO: Make this not a static class
-    public static class DMCompiler {
+    public static partial class DMCompiler {
         public static int ErrorCount = 0;
         public static int WarningCount = 0;
         public static DMCompilerSettings Settings;
@@ -179,13 +179,15 @@ namespace DMCompiler {
                         return;
                     break;
                 case ErrorLevel.Warning:
+                    warnings.Add(emission);
                     ++WarningCount;
                     break;
                 case ErrorLevel.Error:
+                    errors.Add(emission);
                     ++ErrorCount;
                     break;
             }
-            Console.WriteLine(emission);
+            //Console.WriteLine(emission);
             return;
         }
 
@@ -205,7 +207,8 @@ namespace DMCompiler {
 
         /// <inheritdoc cref="ForcedError(string)"/>
         public static void ForcedError(Location loc, string message) {
-            Console.WriteLine(new CompilerEmission(ErrorLevel.Error, loc, message));
+            errors.Add(new CompilerEmission(ErrorLevel.Error, loc, message));
+            //Console.WriteLine(new CompilerEmission(ErrorLevel.Error, loc, message));
             ErrorCount++;
         }
 
@@ -214,13 +217,15 @@ namespace DMCompiler {
         /// Completely ignores the warning configuration. Use wisely!
         /// </summary>
         public static void ForcedWarning(string message) {
-            Console.WriteLine(new CompilerEmission(ErrorLevel.Warning, Location.Internal, message));
+            warnings.Add(new CompilerEmission(ErrorLevel.Warning, Location.Internal, message));
+            //Console.WriteLine(new CompilerEmission(ErrorLevel.Warning, Location.Internal, message));
             WarningCount++;
         }
 
         /// <inheritdoc cref="ForcedWarning(string)"/>
         public static void ForcedWarning(Location loc, string message) {
-            Console.WriteLine(new CompilerEmission(ErrorLevel.Warning, loc, message));
+            warnings.Add(new CompilerEmission(ErrorLevel.Warning, loc, message));
+            //Console.WriteLine(new CompilerEmission(ErrorLevel.Warning, loc, message));
             WarningCount++;
         }
 

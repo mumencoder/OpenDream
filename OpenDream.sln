@@ -88,6 +88,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenDreamRuntime", "OpenDre
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMDisassembler", "DMDisassembler\DMDisassembler.csproj", "{E83EE2FF-1D0D-4268-884A-0CF305F64AAE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Content.Tests.Generator", "Content.Tests.Generator\Content.Tests.Generator.csproj", "{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -320,6 +322,14 @@ Global
 		{E83EE2FF-1D0D-4268-884A-0CF305F64AAE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E83EE2FF-1D0D-4268-884A-0CF305F64AAE}.Release|x64.ActiveCfg = Release|Any CPU
 		{E83EE2FF-1D0D-4268-884A-0CF305F64AAE}.Release|x64.Build.0 = Release|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Debug|x64.Build.0 = Debug|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Release|x64.ActiveCfg = Release|Any CPU
+		{6E659AF7-E6C6-4FB1-B8B3-725984D69E6F}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

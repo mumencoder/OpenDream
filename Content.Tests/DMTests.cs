@@ -13,27 +13,73 @@ using Robust.Shared.Timing;
 
 namespace Content.Tests
 {
-    [TestFixture]
-    public sealed partial class DMTests : ContentUnitTest
-    {
-        public const string TestProject = "DMProject";
-        public const string InitializeEnvironment = "./environment.dme";
+    [Flags]
+    public enum DMTestFlags {
+        NoError = 0,        // Should run without errors
+        Ignore = 1,         // Ignore entirely
+        CompileError = 2,   // Should fail to compile
+        RuntimeError = 4,   // Should throw an exception at runtime
+        ReturnTrue = 8,     // Should return TRUE
+        NoReturn = 16,      // Shouldn't return (aka stopped by a stack-overflow or runtimes)
+    }
 
+    public sealed partial class DMTests  {
+        public const string TestProject = "DMProject";
+
+        public void TestFiles(string sourceFile, DMTestFlags testFlags) {
+            string initialDirectory = Directory.GetCurrentDirectory();
+            try {
+                var test = new DMTest();
+                test.TestFile(sourceFile, testFlags);
+            } finally {
+                // Restore the original CurrentDirectory, since loading a compiled JSON changes it.
+                Directory.SetCurrentDirectory(initialDirectory);
+            }
+        }
+        private static IEnumerable<object[]> GetTests() {
+            Directory.SetCurrentDirectory(TestProject);
+
+            foreach (string sourceFile in Directory.GetFiles("Tests", "*.dm", SearchOption.AllDirectories)) {
+                string sourceFile2 = sourceFile.Substring("Tests/".Length);
+                DMTestFlags testFlags = GetDMTestFlags(sourceFile);
+                if (testFlags.HasFlag(DMTestFlags.Ignore))
+                    continue;
+
+                yield return new object[] {
+                    sourceFile2,
+                    testFlags
+                };
+            }
+        }
+        private static DMTestFlags GetDMTestFlags(string sourceFile) {
+            DMTestFlags testFlags = DMTestFlags.NoError;
+
+            using (StreamReader reader = new StreamReader(sourceFile)) {
+                string firstLine = reader.ReadLine();
+
+                if (firstLine.Contains("IGNORE", StringComparison.InvariantCulture))
+                    testFlags |= DMTestFlags.Ignore;
+                if (firstLine.Contains("COMPILE ERROR", StringComparison.InvariantCulture))
+                    testFlags |= DMTestFlags.CompileError;
+                if (firstLine.Contains("RUNTIME ERROR", StringComparison.InvariantCulture))
+                    testFlags |= DMTestFlags.RuntimeError;
+                if (firstLine.Contains("RETURN TRUE", StringComparison.InvariantCulture))
+                    testFlags |= DMTestFlags.ReturnTrue;
+                if (firstLine.Contains("NO RETURN", StringComparison.InvariantCulture))
+                    testFlags |= DMTestFlags.NoReturn;
+            }
+
+            return testFlags;
+        }
+    }
+    public sealed partial class DMTest : ContentUnitTest
+    {
         private IDreamManager _dreamMan;
         private ITaskManager _taskManager;
 
-        [Flags]
-        public enum DMTestFlags {
-            NoError = 0,        // Should run without errors
-            Ignore = 1,         // Ignore entirely
-            CompileError = 2,   // Should fail to compile
-            RuntimeError = 4,   // Should throw an exception at runtime
-            ReturnTrue = 8,     // Should return TRUE
-            NoReturn = 16,      // Shouldn't return (aka stopped by a stack-overflow or runtimes)
-        }
+        public const string InitializeEnvironment = "./environment.dme";
 
-        [OneTimeSetUp]
-        public void OneTimeSetup()
+        public void Setup()
         {
             _taskManager = IoCManager.Resolve<ITaskManager>();
             _taskManager.Initialize();
@@ -60,48 +106,41 @@ namespace Content.Tests
             File.Delete(compiledFile);
         }
 
-        [Test, TestCaseSource(nameof(GetTests))]
-        public void TestFiles(string sourceFile, DMTestFlags testFlags)
-        {
-            string initialDirectory = Directory.GetCurrentDirectory();
-            try {
-                string compiledFile = Compile(Path.Join(initialDirectory, "Tests", sourceFile));
-                if (testFlags.HasFlag(DMTestFlags.CompileError)) {
-                    Assert.IsNull(compiledFile, $"Expected an error during DM compilation");
-                    Cleanup(compiledFile);
-                    return;
-                }
-
-                Assert.IsTrue(compiledFile is not null && File.Exists(compiledFile), $"Failed to compile DM source file");
-                Assert.IsTrue(_dreamMan.LoadJson(compiledFile), $"Failed to load {compiledFile}");
-
-                (bool successfulRun, DreamValue? returned, Exception? exception) = RunTest();
-
-                if (testFlags.HasFlag(DMTestFlags.NoReturn)) {
-                    Assert.IsFalse(returned.HasValue, "proc returned unexpectedly");
-                } else {
-                    Assert.IsTrue(returned.HasValue, "proc did not return (did it hit an exception?)");
-                }
-
-                if (testFlags.HasFlag(DMTestFlags.RuntimeError)) {
-                    Assert.IsFalse(successfulRun, "A DM runtime exception was expected");
-                } else {
-                    if (exception != null)
-                        Assert.IsTrue(successfulRun, $"A DM runtime exception was thrown: \"{exception.Message}\"");
-                    else
-                        Assert.IsTrue(successfulRun, "A DM runtime exception was thrown, and its message could not be recovered!");
-                }
-
-                if (testFlags.HasFlag(DMTestFlags.ReturnTrue)) {
-                    returned.Value.TryGetValueAsInteger(out int returnInt);
-                    Assert.IsTrue(returnInt != 0, "Test was expected to return TRUE");
-                }
-
+        public void TestFile(string sourceFile, DMTestFlags testFlags) {
+            Setup();
+            string compiledFile = Compile(Path.Join(Directory.GetCurrentDirectory(), "Tests", sourceFile));
+            if (testFlags.HasFlag(DMTestFlags.CompileError)) {
+                Assert.IsNull(compiledFile, $"Expected an error during DM compilation");
                 Cleanup(compiledFile);
-            } finally {
-                // Restore the original CurrentDirectory, since loading a compiled JSON changes it.
-                Directory.SetCurrentDirectory(initialDirectory);
+                return;
             }
+
+            Assert.IsTrue(compiledFile is not null && File.Exists(compiledFile), $"Failed to compile DM source file");
+            Assert.IsTrue(_dreamMan.LoadJson(compiledFile), $"Failed to load {compiledFile}");
+
+            (bool successfulRun, DreamValue? returned, Exception? exception) = RunTest();
+
+            if (testFlags.HasFlag(DMTestFlags.NoReturn)) {
+                Assert.IsFalse(returned.HasValue, "proc returned unexpectedly");
+            } else {
+                Assert.IsTrue(returned.HasValue, "proc did not return (did it hit an exception?)");
+            }
+
+            if (testFlags.HasFlag(DMTestFlags.RuntimeError)) {
+                Assert.IsFalse(successfulRun, "A DM runtime exception was expected");
+            } else {
+                if (exception != null)
+                    Assert.IsTrue(successfulRun, $"A DM runtime exception was thrown: \"{exception.Message}\"");
+                else
+                    Assert.IsTrue(successfulRun, "A DM runtime exception was thrown, and its message could not be recovered!");
+            }
+
+            if (testFlags.HasFlag(DMTestFlags.ReturnTrue)) {
+                returned.Value.TryGetValueAsInteger(out int returnInt);
+                Assert.IsTrue(returnInt != 0, "Test was expected to return TRUE");
+            }
+
+            Cleanup(compiledFile);
         }
 
         private (bool Success, DreamValue? Returned, Exception? except) RunTest() {
@@ -139,44 +178,6 @@ namespace Content.Tests
                 return (retSuccess, result, null);
             else
                 return (false, result, _dreamMan.LastDMException);
-        }
-
-        private static IEnumerable<object[]> GetTests()
-        {
-            Directory.SetCurrentDirectory(TestProject);
-
-            foreach (string sourceFile in Directory.GetFiles("Tests", "*.dm", SearchOption.AllDirectories)) {
-                string sourceFile2 = sourceFile.Substring("Tests/".Length);
-                DMTestFlags testFlags = GetDMTestFlags(sourceFile);
-                if (testFlags.HasFlag(DMTestFlags.Ignore))
-                    continue;
-
-                yield return new object[] {
-                    sourceFile2,
-                    testFlags
-                };
-            }
-        }
-
-        private static DMTestFlags GetDMTestFlags(string sourceFile) {
-            DMTestFlags testFlags = DMTestFlags.NoError;
-
-            using (StreamReader reader = new StreamReader(sourceFile)) {
-                string firstLine = reader.ReadLine();
-
-                if (firstLine.Contains("IGNORE", StringComparison.InvariantCulture))
-                    testFlags |= DMTestFlags.Ignore;
-                if (firstLine.Contains("COMPILE ERROR", StringComparison.InvariantCulture))
-                    testFlags |= DMTestFlags.CompileError;
-                if (firstLine.Contains("RUNTIME ERROR", StringComparison.InvariantCulture))
-                    testFlags |= DMTestFlags.RuntimeError;
-                if (firstLine.Contains("RETURN TRUE", StringComparison.InvariantCulture))
-                    testFlags |= DMTestFlags.ReturnTrue;
-                if (firstLine.Contains("NO RETURN", StringComparison.InvariantCulture))
-                    testFlags |= DMTestFlags.NoReturn;
-            }
-
-            return testFlags;
         }
 
         // TODO Convert the below async tests

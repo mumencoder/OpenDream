@@ -28,7 +28,12 @@
     <ProjectReference Include="..\RobustToolbox\Robust.Shared\Robust.Shared.csproj" />
     <ProjectReference Include="..\RobustToolbox\Robust.UnitTesting\Robust.UnitTesting.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\Content.Tests.Generator\Content.Tests.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  
   <ItemGroup>
     <!-- Copy DMProject to output directory. -->
     <None Include="$(ProjectDir)\DMProject\**" CopyToOutputDirectory="PreserveNewest" LinkBase="DMProject\" />
